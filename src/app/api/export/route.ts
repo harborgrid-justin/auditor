@@ -7,6 +7,10 @@ import { logAuditEvent } from '@/lib/audit/logger';
 import { generateAuditReport } from '@/lib/reports/pdf-generator';
 import { generateManagementLetter } from '@/lib/reports/management-letter';
 import { determineOpinion } from '@/lib/reports/audit-opinion';
+import { generateRepresentationLetter } from '@/lib/reports/representation-letter';
+import { generateGovernanceCommunication } from '@/lib/reports/governance-communication';
+import { generateICFRReport } from '@/lib/reports/icfr-report';
+import { generateSUDSchedule } from '@/lib/engine/adjustments/adjustment-tracker';
 
 export async function GET(req: NextRequest) {
   try {
@@ -192,6 +196,125 @@ export async function GET(req: NextRequest) {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
           'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_Audit_Report.txt"`,
+        },
+      });
+    }
+
+    // Representation letter
+    if (type === 'representation_letter') {
+      const adjustments = db.select().from(schema.auditAdjustments).where(eq(schema.auditAdjustments.engagementId, engagementId)).all();
+      const relParties = db.select().from(schema.relatedParties).where(eq(schema.relatedParties.engagementId, engagementId)).all();
+      const seEvents = db.select().from(schema.subsequentEvents).where(eq(schema.subsequentEvents.engagementId, engagementId)).all();
+      const gcAssessments = db.select().from(schema.goingConcernAssessments).where(eq(schema.goingConcernAssessments.engagementId, engagementId)).all();
+
+      const letter = generateRepresentationLetter({
+        entityName: engagement.entityName,
+        fiscalYearEnd: engagement.fiscalYearEnd,
+        auditorFirmName: 'AuditPro',
+        ceoName: '[CEO Name]',
+        cfoName: '[CFO Name]',
+        passedAdjustments: adjustments.filter(a => a.type === 'passed').map(a => ({ description: a.description, amount: a.amount })),
+        relatedParties: relParties.map(rp => ({ partyName: rp.partyName, relationship: rp.relationship })),
+        subsequentEvents: seEvents.map(se => ({ description: se.eventDescription, eventType: se.eventType })),
+        goingConcernIssues: gcAssessments.some(gc => gc.conclusion !== 'no_substantial_doubt'),
+        litigationItems: [],
+        generatedAt: now,
+      });
+
+      logAuditEvent({
+        userId: auth.user.id, userName: auth.user.name, action: 'export',
+        entityType: 'engagement', entityId: engagementId, engagementId,
+        details: { type: 'representation_letter' },
+      });
+
+      return new NextResponse(letter, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_Representation_Letter.txt"`,
+        },
+      });
+    }
+
+    // Governance communication (AU-C 260)
+    if (type === 'governance_communication') {
+      const adjustments = db.select().from(schema.auditAdjustments).where(eq(schema.auditAdjustments.engagementId, engagementId)).all();
+      const gcAssessments = db.select().from(schema.goingConcernAssessments).where(eq(schema.goingConcernAssessments.engagementId, engagementId)).all();
+      const opinion = determineOpinion({ entityName: engagement.entityName, fiscalYearEnd: engagement.fiscalYearEnd, findings, controls, materialityThreshold: engagement.materialityThreshold, generatedAt: now });
+
+      const comm = generateGovernanceCommunication({
+        entityName: engagement.entityName,
+        fiscalYearEnd: engagement.fiscalYearEnd,
+        auditorFirmName: 'AuditPro',
+        findings,
+        materialWeaknesses: controls.filter(c => c.status === 'material_weakness').map(c => ({ controlId: c.controlId, title: c.title, category: c.category })),
+        significantDeficiencies: controls.filter(c => c.status === 'significant_deficiency').map(c => ({ controlId: c.controlId, title: c.title, category: c.category })),
+        passedAdjustments: adjustments.filter(a => a.type === 'passed').map(a => ({ description: a.description, amount: a.amount, effectOnIncome: a.effectOnIncome })),
+        materialityThreshold: engagement.materialityThreshold,
+        opinionType: opinion.opinionType,
+        goingConcernIssues: gcAssessments.some(gc => gc.conclusion !== 'no_substantial_doubt'),
+        generatedAt: now,
+      });
+
+      logAuditEvent({
+        userId: auth.user.id, userName: auth.user.name, action: 'export',
+        entityType: 'engagement', entityId: engagementId, engagementId,
+        details: { type: 'governance_communication' },
+      });
+
+      return new NextResponse(comm, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_Governance_Communication.txt"`,
+        },
+      });
+    }
+
+    // ICFR Report
+    if (type === 'icfr_report') {
+      const report = generateICFRReport({
+        entityName: engagement.entityName,
+        fiscalYearEnd: engagement.fiscalYearEnd,
+        auditorFirmName: 'AuditPro',
+        controls: controls.map(c => ({ controlId: c.controlId, title: c.title, category: c.category, status: c.status })),
+        materialWeaknesses: controls.filter(c => c.status === 'material_weakness').map(c => ({ controlId: c.controlId, title: c.title, category: c.category, description: c.description })),
+        significantDeficiencies: controls.filter(c => c.status === 'significant_deficiency').map(c => ({ controlId: c.controlId, title: c.title, category: c.category })),
+        generatedAt: now,
+      });
+
+      logAuditEvent({
+        userId: auth.user.id, userName: auth.user.name, action: 'export',
+        entityType: 'engagement', entityId: engagementId, engagementId,
+        details: { type: 'icfr_report' },
+      });
+
+      return new NextResponse(report, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_ICFR_Report.txt"`,
+        },
+      });
+    }
+
+    // SUD Schedule
+    if (type === 'sud_schedule') {
+      const adjustments = db.select().from(schema.auditAdjustments).where(eq(schema.auditAdjustments.engagementId, engagementId)).all();
+      const schedule = generateSUDSchedule(
+        adjustments.map(a => ({ ...a, findingId: a.findingId ?? undefined })),
+        engagement.materialityThreshold,
+        engagement.entityName,
+        engagement.fiscalYearEnd
+      );
+
+      logAuditEvent({
+        userId: auth.user.id, userName: auth.user.name, action: 'export',
+        entityType: 'engagement', entityId: engagementId, engagementId,
+        details: { type: 'sud_schedule' },
+      });
+
+      return new NextResponse(schedule, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_SUD_Schedule.txt"`,
         },
       });
     }

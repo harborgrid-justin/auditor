@@ -257,3 +257,171 @@ export const schedules = sqliteTable('schedules', {
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+// --- Phase 4: Enterprise Audit Opinion Features ---
+
+export const samplingPlans = sqliteTable('sampling_plans', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  name: text('name').notNull(),
+  populationType: text('population_type', { enum: ['journal_entries', 'accounts_receivable', 'accounts_payable', 'inventory', 'revenue', 'expenses', 'controls', 'custom'] }).notNull(),
+  method: text('method', { enum: ['attribute', 'mus', 'stratified', 'systematic', 'random'] }).notNull(),
+  confidenceLevel: real('confidence_level').notNull().default(0.95),
+  tolerableRate: real('tolerable_rate'),
+  expectedDeviationRate: real('expected_deviation_rate'),
+  tolerableMisstatement: real('tolerable_misstatement'),
+  expectedMisstatement: real('expected_misstatement'),
+  populationSize: integer('population_size').notNull().default(0),
+  populationValue: real('population_value'),
+  calculatedSampleSize: integer('calculated_sample_size').notNull().default(0),
+  selectedItemsJson: text('selected_items_json'),
+  exceptionsFound: integer('exceptions_found').notNull().default(0),
+  projectedMisstatement: real('projected_misstatement'),
+  upperMisstatementLimit: real('upper_misstatement_limit'),
+  conclusion: text('conclusion', { enum: ['pending', 'supports_reliance', 'does_not_support', 'inconclusive'] }).notNull().default('pending'),
+  conclusionNotes: text('conclusion_notes'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const auditAdjustments = sqliteTable('audit_adjustments', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  adjustmentNumber: text('adjustment_number').notNull(),
+  type: text('type', { enum: ['proposed', 'recorded', 'passed'] }).notNull(),
+  category: text('category', { enum: ['factual', 'judgmental', 'projected'] }).notNull().default('factual'),
+  description: text('description').notNull(),
+  debitAccountId: text('debit_account_id'),
+  debitAccountName: text('debit_account_name').notNull(),
+  creditAccountId: text('credit_account_id'),
+  creditAccountName: text('credit_account_name').notNull(),
+  amount: real('amount').notNull(),
+  findingId: text('finding_id'),
+  effectOnIncome: real('effect_on_income').notNull().default(0),
+  effectOnAssets: real('effect_on_assets').notNull().default(0),
+  effectOnLiabilities: real('effect_on_liabilities').notNull().default(0),
+  effectOnEquity: real('effect_on_equity').notNull().default(0),
+  proposedBy: text('proposed_by').notNull(),
+  approvedBy: text('approved_by'),
+  status: text('status', { enum: ['draft', 'proposed', 'accepted', 'rejected', 'waived'] }).notNull().default('draft'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const assertionCoverage = sqliteTable('assertion_coverage', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  accountId: text('account_id'),
+  accountName: text('account_name').notNull(),
+  accountType: text('account_type').notNull(),
+  assertion: text('assertion', { enum: ['existence', 'completeness', 'valuation', 'rights_obligations', 'presentation_disclosure', 'accuracy', 'cutoff', 'classification'] }).notNull(),
+  procedureType: text('procedure_type', { enum: ['substantive_detail', 'substantive_analytical', 'test_of_controls', 'confirmation', 'observation', 'inspection', 'recalculation', 'inquiry'] }).notNull(),
+  procedureDescription: text('procedure_description').notNull(),
+  evidenceReference: text('evidence_reference'),
+  coveredBy: text('covered_by').notNull(),
+  status: text('status', { enum: ['planned', 'in_progress', 'completed', 'not_applicable'] }).notNull().default('planned'),
+  conclusion: text('conclusion'),
+  completedAt: text('completed_at'),
+});
+
+export const goingConcernAssessments = sqliteTable('going_concern_assessments', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  assessmentDate: text('assessment_date').notNull(),
+  quantitativeIndicatorsJson: text('quantitative_indicators_json').notNull(),
+  qualitativeIndicatorsJson: text('qualitative_indicators_json'),
+  cashFlowProjectionJson: text('cash_flow_projection_json'),
+  managementPlanJson: text('management_plan_json'),
+  mitigatingFactorsJson: text('mitigating_factors_json'),
+  conclusion: text('conclusion', { enum: ['no_substantial_doubt', 'substantial_doubt_mitigated', 'substantial_doubt_exists'] }).notNull(),
+  opinionImpact: text('opinion_impact', { enum: ['none', 'emphasis_of_matter', 'qualified', 'adverse'] }).notNull(),
+  disclosureAdequate: integer('disclosure_adequate', { mode: 'boolean' }).notNull().default(true),
+  assessedBy: text('assessed_by').notNull(),
+  reviewedBy: text('reviewed_by'),
+  notes: text('notes'),
+});
+
+export const scopeLimitations = sqliteTable('scope_limitations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  description: text('description').notNull(),
+  accountsAffected: text('accounts_affected').notNull(),
+  estimatedImpact: real('estimated_impact'),
+  pervasive: integer('pervasive', { mode: 'boolean' }).notNull().default(false),
+  imposedBy: text('imposed_by', { enum: ['client', 'circumstance'] }).notNull(),
+  resolved: integer('resolved', { mode: 'boolean' }).notNull().default(false),
+  resolutionNotes: text('resolution_notes'),
+  identifiedBy: text('identified_by').notNull(),
+  identifiedAt: text('identified_at').notNull(),
+});
+
+export const completionChecklist = sqliteTable('completion_checklist', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  itemKey: text('item_key').notNull(),
+  category: text('category', { enum: ['planning', 'fieldwork', 'review', 'reporting', 'quality', 'documentation'] }).notNull(),
+  description: text('description').notNull(),
+  autoCheck: integer('auto_check', { mode: 'boolean' }).notNull().default(false),
+  autoCheckResult: integer('auto_check_result', { mode: 'boolean' }),
+  status: text('status', { enum: ['not_started', 'in_progress', 'completed', 'not_applicable'] }).notNull().default('not_started'),
+  completedBy: text('completed_by'),
+  completedAt: text('completed_at'),
+  notes: text('notes'),
+  required: integer('required', { mode: 'boolean' }).notNull().default(true),
+});
+
+export const independenceConfirmations = sqliteTable('independence_confirmations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  userName: text('user_name').notNull(),
+  confirmationType: text('confirmation_type', { enum: ['engagement_level', 'annual', 'specific_matter'] }).notNull(),
+  confirmed: integer('confirmed', { mode: 'boolean' }).notNull().default(false),
+  threatsIdentified: text('threats_identified'),
+  safeguardsApplied: text('safeguards_applied'),
+  nonAuditServices: text('non_audit_services'),
+  feeArrangement: text('fee_arrangement'),
+  confirmedAt: text('confirmed_at'),
+});
+
+export const relatedParties = sqliteTable('related_parties', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  partyName: text('party_name').notNull(),
+  relationship: text('relationship', { enum: ['parent', 'subsidiary', 'affiliate', 'key_management', 'close_family', 'joint_venture', 'significant_investor', 'other'] }).notNull(),
+  ownershipPct: real('ownership_pct'),
+  controlIndicators: text('control_indicators'),
+  identifiedBy: text('identified_by').notNull(),
+  identifiedAt: text('identified_at').notNull(),
+});
+
+export const relatedPartyTransactions = sqliteTable('related_party_transactions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  relatedPartyId: text('related_party_id').notNull().references(() => relatedParties.id),
+  transactionType: text('transaction_type').notNull(),
+  description: text('description').notNull(),
+  amount: real('amount').notNull(),
+  terms: text('terms'),
+  businessPurpose: text('business_purpose'),
+  armLengthAssessment: text('arm_length_assessment', { enum: ['comparable', 'not_comparable', 'not_assessed'] }).notNull().default('not_assessed'),
+  disclosed: integer('disclosed', { mode: 'boolean' }).notNull().default(false),
+  journalEntryIds: text('journal_entry_ids'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: text('reviewed_at'),
+});
+
+export const subsequentEvents = sqliteTable('subsequent_events', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  eventDescription: text('event_description').notNull(),
+  eventDate: text('event_date').notNull(),
+  eventType: text('event_type', { enum: ['type_1_adjusting', 'type_2_non_adjusting'] }).notNull(),
+  procedurePerformed: text('procedure_performed').notNull(),
+  conclusion: text('conclusion').notNull(),
+  adjustmentRequired: integer('adjustment_required', { mode: 'boolean' }).notNull().default(false),
+  disclosureRequired: integer('disclosure_required', { mode: 'boolean' }).notNull().default(false),
+  adjustmentAmount: real('adjustment_amount'),
+  identifiedBy: text('identified_by').notNull(),
+  identifiedAt: text('identified_at').notNull(),
+  reviewedBy: text('reviewed_by'),
+});
