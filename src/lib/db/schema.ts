@@ -17,7 +17,7 @@ export const engagements = sqliteTable('engagements', {
   status: text('status', { enum: ['planning', 'fieldwork', 'review', 'completed', 'archived'] }).notNull().default('planning'),
   materialityThreshold: real('materiality_threshold').notNull().default(0),
   industry: text('industry'),
-  entityType: text('entity_type', { enum: ['c_corp', 's_corp', 'partnership', 'llc', 'nonprofit'] }),
+  entityType: text('entity_type', { enum: ['c_corp', 's_corp', 'partnership', 'llc', 'nonprofit', 'dod_component', 'defense_agency', 'combatant_command', 'working_capital_fund', 'naf_entity'] }),
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull(),
 });
@@ -95,7 +95,7 @@ export const findings = sqliteTable('findings', {
   id: text('id').primaryKey(),
   engagementId: text('engagement_id').notNull().references(() => engagements.id),
   ruleId: text('rule_id').notNull(),
-  framework: text('framework', { enum: ['GAAP', 'IRS', 'SOX', 'PCAOB'] }).notNull(),
+  framework: text('framework', { enum: ['GAAP', 'IRS', 'SOX', 'PCAOB', 'DOD_FMR'] }).notNull(),
   severity: text('severity', { enum: ['critical', 'high', 'medium', 'low', 'info'] }).notNull(),
   title: text('title').notNull(),
   description: text('description').notNull(),
@@ -165,7 +165,7 @@ export const auditLogs = sqliteTable('audit_logs', {
   userId: text('user_id').notNull(),
   userName: text('user_name').notNull(),
   action: text('action', { enum: ['create', 'read', 'update', 'delete', 'analyze', 'export', 'upload', 'login', 'logout'] }).notNull(),
-  entityType: text('entity_type', { enum: ['engagement', 'finding', 'control', 'file', 'journal_entry', 'user', 'template', 'schedule', 'signoff', 'workpaper'] }).notNull(),
+  entityType: text('entity_type', { enum: ['engagement', 'finding', 'control', 'file', 'journal_entry', 'user', 'template', 'schedule', 'signoff', 'workpaper', 'appropriation', 'obligation', 'disbursement', 'ada_violation', 'travel_order', 'contract_payment', 'interagency_agreement'] }).notNull(),
   entityId: text('entity_id'),
   details: text('details'),
   ipAddress: text('ip_address'),
@@ -486,4 +486,452 @@ export const uncertainTaxPositions = sqliteTable('uncertain_tax_positions', {
   createdAt: text('created_at').notNull(),
   reviewedBy: text('reviewed_by'),
   reviewedAt: text('reviewed_at'),
+});
+
+// --- DoD FMR: Federal Financial Management (Volumes 1-15) ---
+
+export const appropriations = sqliteTable('appropriations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  treasuryAccountSymbol: text('treasury_account_symbol').notNull(),
+  appropriationType: text('appropriation_type', {
+    enum: ['one_year', 'multi_year', 'no_year', 'revolving', 'trust', 'special', 'naf'],
+  }).notNull(),
+  appropriationTitle: text('appropriation_title').notNull(),
+  budgetCategory: text('budget_category', {
+    enum: ['milpers', 'om', 'procurement', 'rdte', 'milcon', 'family_housing', 'brac', 'working_capital', 'naf', 'other'],
+  }).notNull(),
+  fiscalYearStart: text('fiscal_year_start').notNull(),
+  fiscalYearEnd: text('fiscal_year_end').notNull(),
+  expirationDate: text('expiration_date'),
+  cancellationDate: text('cancellation_date'),
+  totalAuthority: real('total_authority').notNull().default(0),
+  apportioned: real('apportioned').notNull().default(0),
+  allotted: real('allotted').notNull().default(0),
+  committed: real('committed').notNull().default(0),
+  obligated: real('obligated').notNull().default(0),
+  disbursed: real('disbursed').notNull().default(0),
+  unobligatedBalance: real('unobligated_balance').notNull().default(0),
+  status: text('status', { enum: ['current', 'expired', 'cancelled'] }).notNull().default('current'),
+  sfisDataJson: text('sfis_data_json'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const fundControls = sqliteTable('fund_controls', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  appropriationId: text('appropriation_id').notNull().references(() => appropriations.id),
+  controlLevel: text('control_level', {
+    enum: ['apportionment', 'allotment', 'sub_allotment', 'operating_budget'],
+  }).notNull(),
+  amount: real('amount').notNull().default(0),
+  obligatedAgainst: real('obligated_against').notNull().default(0),
+  expendedAgainst: real('expended_against').notNull().default(0),
+  availableBalance: real('available_balance').notNull().default(0),
+  controlledBy: text('controlled_by').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+  expirationDate: text('expiration_date'),
+});
+
+export const dodObligations = sqliteTable('dod_obligations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  appropriationId: text('appropriation_id').notNull().references(() => appropriations.id),
+  obligationNumber: text('obligation_number').notNull(),
+  documentType: text('document_type', {
+    enum: ['contract', 'purchase_order', 'travel_order', 'payroll', 'grant', 'iaa', 'misc'],
+  }).notNull(),
+  vendorOrPayee: text('vendor_or_payee'),
+  amount: real('amount').notNull(),
+  obligatedDate: text('obligated_date').notNull(),
+  liquidatedAmount: real('liquidated_amount').notNull().default(0),
+  unliquidatedBalance: real('unliquidated_balance').notNull().default(0),
+  adjustmentAmount: real('adjustment_amount').notNull().default(0),
+  status: text('status', {
+    enum: ['open', 'partially_liquidated', 'fully_liquidated', 'deobligated', 'adjusted'],
+  }).notNull().default('open'),
+  bonafideNeedDate: text('bonafide_need_date'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  budgetObjectCode: text('budget_object_code').notNull(),
+  budgetActivityCode: text('budget_activity_code'),
+  programElement: text('program_element'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const dodDisbursements = sqliteTable('dod_disbursements', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  obligationId: text('obligation_id').notNull().references(() => dodObligations.id),
+  disbursementNumber: text('disbursement_number').notNull(),
+  voucherNumber: text('voucher_number'),
+  payeeId: text('payee_id'),
+  amount: real('amount').notNull(),
+  disbursementDate: text('disbursement_date').notNull(),
+  paymentMethod: text('payment_method', {
+    enum: ['eft', 'check', 'intra_gov', 'treasury_offset', 'cash'],
+  }).notNull(),
+  certifiedBy: text('certified_by'),
+  status: text('status', {
+    enum: ['pending', 'certified', 'released', 'cancelled', 'returned'],
+  }).notNull().default('pending'),
+  promptPayDueDate: text('prompt_pay_due_date'),
+  discountDate: text('discount_date'),
+  discountAmount: real('discount_amount').notNull().default(0),
+  interestPenalty: real('interest_penalty').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+export const dodCollections = sqliteTable('dod_collections', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  appropriationId: text('appropriation_id').notNull().references(() => appropriations.id),
+  collectionType: text('collection_type', {
+    enum: ['reimbursement', 'refund', 'recovery', 'sale_proceeds', 'fee', 'deposit'],
+  }).notNull(),
+  sourceEntity: text('source_entity').notNull(),
+  amount: real('amount').notNull(),
+  collectionDate: text('collection_date').notNull(),
+  depositNumber: text('deposit_number'),
+  accountingClassification: text('accounting_classification'),
+  status: text('status').notNull().default('recorded'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const ussglAccounts = sqliteTable('ussgl_accounts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  accountNumber: text('account_number').notNull(),
+  accountTitle: text('account_title').notNull(),
+  normalBalance: text('normal_balance', { enum: ['debit', 'credit'] }).notNull(),
+  accountType: text('account_type', { enum: ['proprietary', 'budgetary'] }).notNull(),
+  category: text('category', {
+    enum: ['asset', 'liability', 'net_position', 'revenue', 'expense', 'budgetary_resource', 'status_of_resources'],
+  }).notNull(),
+  beginBalance: real('begin_balance').notNull().default(0),
+  endBalance: real('end_balance').notNull().default(0),
+  fiscalYear: integer('fiscal_year').notNull(),
+});
+
+export const ussglTransactions = sqliteTable('ussgl_transactions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  transactionCode: text('transaction_code').notNull(),
+  debitAccountId: text('debit_account_id').notNull(),
+  creditAccountId: text('credit_account_id').notNull(),
+  amount: real('amount').notNull(),
+  postingDate: text('posting_date').notNull(),
+  documentNumber: text('document_number').notNull(),
+  description: text('description').notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  proprietaryOrBudgetary: text('proprietary_or_budgetary', {
+    enum: ['proprietary', 'budgetary', 'both'],
+  }).notNull(),
+});
+
+export const budgetObjectCodes = sqliteTable('budget_object_codes', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull(),
+  title: text('title').notNull(),
+  category: text('category', {
+    enum: ['personnel', 'contractual_services', 'supplies', 'equipment', 'grants', 'other'],
+  }).notNull(),
+  subCategory: text('sub_category'),
+  fiscalYear: integer('fiscal_year').notNull(),
+});
+
+export const sfisElements = sqliteTable('sfis_elements', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  departmentCode: text('department_code').notNull(),
+  mainAccountCode: text('main_account_code').notNull(),
+  subAccountCode: text('sub_account_code'),
+  availabilityType: text('availability_type'),
+  beginPeriod: text('begin_period'),
+  endPeriod: text('end_period'),
+  fundType: text('fund_type'),
+  programCode: text('program_code'),
+  projectCode: text('project_code'),
+  activityCode: text('activity_code'),
+});
+
+export const adaViolations = sqliteTable('ada_violations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  appropriationId: text('appropriation_id').references(() => appropriations.id),
+  violationType: text('violation_type', {
+    enum: ['over_obligation', 'over_expenditure', 'unauthorized_purpose', 'advance_without_authority', 'voluntary_service', 'time_violation'],
+  }).notNull(),
+  statutoryBasis: text('statutory_basis').notNull(),
+  amount: real('amount').notNull(),
+  description: text('description').notNull(),
+  discoveredDate: text('discovered_date').notNull(),
+  reportedDate: text('reported_date'),
+  responsibleOfficer: text('responsible_officer'),
+  investigationStatus: text('investigation_status', {
+    enum: ['detected', 'under_investigation', 'confirmed', 'reported_to_president', 'resolved'],
+  }).notNull().default('detected'),
+  correctiveAction: text('corrective_action'),
+  violationDetails: text('violation_details'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const militaryPayRecords = sqliteTable('military_pay_records', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  memberId: text('member_id').notNull(),
+  payGrade: text('pay_grade').notNull(),
+  yearsOfService: integer('years_of_service').notNull(),
+  basicPay: real('basic_pay').notNull(),
+  bah: real('bah').notNull().default(0),
+  bas: real('bas').notNull().default(0),
+  specialPaysJson: text('special_pays_json'),
+  incentivePaysJson: text('incentive_pays_json'),
+  combatZoneExclusion: integer('combat_zone_exclusion', { mode: 'boolean' }).notNull().default(false),
+  tspContribution: real('tsp_contribution').notNull().default(0),
+  tspMatchAmount: real('tsp_match_amount').notNull().default(0),
+  separationPay: real('separation_pay').notNull().default(0),
+  retirementPay: real('retirement_pay').notNull().default(0),
+  totalCompensation: real('total_compensation').notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  payPeriod: text('pay_period').notNull(),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const civilianPayRecords = sqliteTable('civilian_pay_records', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  employeeId: text('employee_id').notNull(),
+  payPlan: text('pay_plan').notNull(),
+  grade: text('grade').notNull(),
+  step: integer('step').notNull(),
+  locality: text('locality').notNull(),
+  basicPay: real('basic_pay').notNull(),
+  localityAdjustment: real('locality_adjustment').notNull().default(0),
+  fehbContribution: real('fehb_contribution').notNull().default(0),
+  fegliContribution: real('fegli_contribution').notNull().default(0),
+  retirementContribution: real('retirement_contribution').notNull().default(0),
+  retirementPlan: text('retirement_plan', { enum: ['fers', 'csrs', 'fers_revised'] }).notNull(),
+  tspContribution: real('tsp_contribution').notNull().default(0),
+  tspMatchAmount: real('tsp_match_amount').notNull().default(0),
+  premiumPay: real('premium_pay').notNull().default(0),
+  overtimePay: real('overtime_pay').notNull().default(0),
+  leaveHoursAccrued: real('leave_hours_accrued').notNull().default(0),
+  totalCompensation: real('total_compensation').notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  payPeriod: text('pay_period').notNull(),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const travelOrders = sqliteTable('travel_orders', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  travelerId: text('traveler_id').notNull(),
+  orderType: text('order_type', { enum: ['tdy', 'pcs', 'local', 'emergency_leave'] }).notNull(),
+  purpose: text('purpose').notNull(),
+  originLocation: text('origin_location').notNull(),
+  destinationLocation: text('destination_location').notNull(),
+  departDate: text('depart_date').notNull(),
+  returnDate: text('return_date').notNull(),
+  authorizedAmount: real('authorized_amount').notNull(),
+  actualAmount: real('actual_amount').notNull().default(0),
+  perDiemRate: real('per_diem_rate').notNull(),
+  lodgingRate: real('lodging_rate').notNull(),
+  mieRate: real('mie_rate').notNull().default(0),
+  status: text('status', {
+    enum: ['authorized', 'in_progress', 'completed', 'voucher_filed', 'settled'],
+  }).notNull().default('authorized'),
+  authorizingOfficial: text('authorizing_official').notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const dodTravelVouchers = sqliteTable('dod_travel_vouchers', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  travelOrderId: text('travel_order_id').notNull().references(() => travelOrders.id),
+  voucherNumber: text('voucher_number').notNull(),
+  lodgingCost: real('lodging_cost').notNull().default(0),
+  mealsCost: real('meals_cost').notNull().default(0),
+  transportationCost: real('transportation_cost').notNull().default(0),
+  otherCosts: real('other_costs').notNull().default(0),
+  advanceAmount: real('advance_amount').notNull().default(0),
+  totalClaim: real('total_claim').notNull(),
+  approvedAmount: real('approved_amount'),
+  settlementAmount: real('settlement_amount'),
+  travelCardUsed: integer('travel_card_used', { mode: 'boolean' }).notNull().default(false),
+  splitDisbursement: integer('split_disbursement', { mode: 'boolean' }).notNull().default(false),
+  filedDate: text('filed_date').notNull(),
+  settledDate: text('settled_date'),
+  status: text('status', { enum: ['submitted', 'approved', 'paid', 'disputed', 'rejected'] }).notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const travelCardTransactions = sqliteTable('travel_card_transactions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  travelerId: text('traveler_id').notNull(),
+  transactionDate: text('transaction_date').notNull(),
+  merchantName: text('merchant_name').notNull(),
+  amount: real('amount').notNull(),
+  category: text('category').notNull(),
+  travelOrderId: text('travel_order_id'),
+  reconciledToVoucher: integer('reconciled_to_voucher', { mode: 'boolean' }).notNull().default(false),
+  delinquencyStatus: text('delinquency_status', {
+    enum: ['current', '30_day', '60_day', '90_plus', 'charge_off'],
+  }).notNull().default('current'),
+});
+
+export const dodContracts = sqliteTable('dod_contracts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  contractNumber: text('contract_number').notNull(),
+  contractType: text('contract_type', {
+    enum: ['firm_fixed_price', 'cost_plus', 'time_and_materials', 'cost_reimbursement', 'idiq', 'bpa', 'other'],
+  }).notNull(),
+  vendorName: text('vendor_name').notNull(),
+  totalValue: real('total_value').notNull(),
+  obligatedAmount: real('obligated_amount').notNull().default(0),
+  fundedAmount: real('funded_amount').notNull().default(0),
+  periodOfPerformance: text('period_of_performance').notNull(),
+  contractingOfficer: text('contracting_officer').notNull(),
+  status: text('status', { enum: ['active', 'completed', 'terminated', 'closeout'] }).notNull().default('active'),
+  closeoutDate: text('closeout_date'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const dodContractPayments = sqliteTable('dod_contract_payments', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  obligationId: text('obligation_id').notNull(),
+  contractNumber: text('contract_number').notNull(),
+  contractType: text('contract_type', {
+    enum: ['firm_fixed_price', 'cost_plus', 'time_and_materials', 'cost_reimbursement', 'idiq', 'bpa', 'other'],
+  }).notNull(),
+  vendorId: text('vendor_id').notNull(),
+  invoiceNumber: text('invoice_number'),
+  invoiceAmount: real('invoice_amount').notNull(),
+  approvedAmount: real('approved_amount').notNull(),
+  retainageAmount: real('retainage_amount').notNull().default(0),
+  progressPaymentPct: real('progress_payment_pct'),
+  performanceBasedPct: real('performance_based_pct'),
+  paymentType: text('payment_type', {
+    enum: ['progress', 'performance_based', 'final', 'partial', 'advance', 'invoice'],
+  }).notNull(),
+  dcaaAuditRequired: integer('dcaa_audit_required', { mode: 'boolean' }).notNull().default(false),
+  dcaaAuditStatus: text('dcaa_audit_status', {
+    enum: ['not_required', 'pending', 'in_progress', 'completed', 'exception'],
+  }),
+  certifiedBy: text('certified_by'),
+  paymentDate: text('payment_date').notNull(),
+  status: text('status', { enum: ['pending', 'approved', 'paid', 'disputed', 'held'] }).notNull().default('pending'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const interagencyAgreements = sqliteTable('interagency_agreements', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  agreementNumber: text('agreement_number').notNull(),
+  agreementType: text('agreement_type', {
+    enum: ['economy_act', 'non_economy_act', 'franchise_fund'],
+  }).notNull(),
+  servicingAgency: text('servicing_agency').notNull(),
+  requestingAgency: text('requesting_agency').notNull(),
+  amount: real('amount').notNull(),
+  advanceReceived: real('advance_received').notNull().default(0),
+  billedAmount: real('billed_amount').notNull().default(0),
+  collectedAmount: real('collected_amount').notNull().default(0),
+  obligatedAmount: real('obligated_amount').notNull().default(0),
+  periodOfPerformance: text('period_of_performance').notNull(),
+  authority: text('authority').notNull(),
+  status: text('status', { enum: ['pending', 'active', 'completed', 'closeout'] }).notNull().default('pending'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const workingCapitalFunds = sqliteTable('working_capital_funds', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  fundName: text('fund_name').notNull(),
+  fundType: text('fund_type', { enum: ['supply', 'depot_maintenance', 'industrial', 'other'] }).notNull(),
+  capitalizedAssets: real('capitalized_assets').notNull().default(0),
+  accumulatedDepreciation: real('accumulated_depreciation').notNull().default(0),
+  revenueFromOperations: real('revenue_from_operations').notNull().default(0),
+  costOfOperations: real('cost_of_operations').notNull().default(0),
+  netOperatingResult: real('net_operating_result').notNull().default(0),
+  cashBalance: real('cash_balance').notNull().default(0),
+  fiscalYear: integer('fiscal_year').notNull(),
+});
+
+export const specialAccountsTable = sqliteTable('special_accounts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  accountType: text('account_type', {
+    enum: ['fms_trust', 'environmental_restoration', 'homeowners_assistance', 'other'],
+  }).notNull(),
+  accountName: text('account_name').notNull(),
+  balance: real('balance').notNull().default(0),
+  receipts: real('receipts').notNull().default(0),
+  disbursementsAmount: real('disbursements_amount').notNull().default(0),
+  transfersIn: real('transfers_in').notNull().default(0),
+  transfersOut: real('transfers_out').notNull().default(0),
+  fiscalYear: integer('fiscal_year').notNull(),
+});
+
+export const nafAccounts = sqliteTable('naf_accounts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  accountType: text('account_type', {
+    enum: ['mwr_category_a', 'mwr_category_b', 'mwr_category_c', 'lodging', 'other'],
+  }).notNull(),
+  accountName: text('account_name').notNull(),
+  revenues: real('revenues').notNull().default(0),
+  expenses: real('expenses').notNull().default(0),
+  netIncome: real('net_income').notNull().default(0),
+  assets: real('assets').notNull().default(0),
+  liabilities: real('liabilities').notNull().default(0),
+  netAssets: real('net_assets').notNull().default(0),
+  fiscalYear: integer('fiscal_year').notNull(),
+});
+
+export const intragovernmentalTransactions = sqliteTable('intragovernmental_transactions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  transactionType: text('transaction_type', {
+    enum: ['reimbursable', 'transfer', 'allocation', 'economy_act', 'interagency_agreement'],
+  }).notNull(),
+  tradingPartnerAgency: text('trading_partner_agency').notNull(),
+  tradingPartnerTas: text('trading_partner_tas'),
+  agreementNumber: text('agreement_number'),
+  amount: real('amount').notNull(),
+  buyerSellerIndicator: text('buyer_seller_indicator', { enum: ['buyer', 'seller'] }).notNull(),
+  reconciliationStatus: text('reconciliation_status', {
+    enum: ['matched', 'unmatched', 'in_dispute', 'pending'],
+  }).notNull().default('pending'),
+  eliminationRequired: integer('elimination_required', { mode: 'boolean' }).notNull().default(true),
+  period: text('period').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const fiarAssessments = sqliteTable('fiar_assessments', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  assessmentDate: text('assessment_date').notNull(),
+  auditReadinessScore: real('audit_readiness_score').notNull(),
+  fundBalanceReconciled: integer('fund_balance_reconciled', { mode: 'boolean' }).notNull().default(false),
+  ussglCompliant: integer('ussgl_compliant', { mode: 'boolean' }).notNull().default(false),
+  sfisCompliant: integer('sfis_compliant', { mode: 'boolean' }).notNull().default(false),
+  internalControlsAssessed: integer('internal_controls_assessed', { mode: 'boolean' }).notNull().default(false),
+  materialWeaknessesJson: text('material_weaknesses_json'),
+  noticeOfFindingsJson: text('notice_of_findings_json'),
+  correctiveActionPlansJson: text('corrective_action_plans_json'),
+  conclusion: text('conclusion', {
+    enum: ['audit_ready', 'substantially_ready', 'not_ready', 'modified'],
+  }).notNull(),
+  assessedBy: text('assessed_by').notNull(),
+  createdAt: text('created_at').notNull(),
 });

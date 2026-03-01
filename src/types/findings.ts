@@ -1,4 +1,4 @@
-export type Framework = 'GAAP' | 'IRS' | 'SOX' | 'PCAOB';
+export type Framework = 'GAAP' | 'IRS' | 'SOX' | 'PCAOB' | 'DOD_FMR';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
@@ -46,6 +46,7 @@ export interface EngagementData {
   taxYear: number;
   entityType?: string;
   uncertainTaxPositions?: import('./tax-compliance').UncertainTaxPosition[];
+  dodData?: import('./dod-fmr').DoDEngagementData;
 }
 
 export interface RuleResult {
@@ -90,4 +91,5 @@ export const FRAMEWORK_LABELS: Record<Framework, string> = {
   IRS: 'IRS / Tax Code',
   SOX: 'SOX 302/404',
   PCAOB: 'PCAOB Standards',
+  DOD_FMR: 'DoD FMR (7000.14-R)',
 };

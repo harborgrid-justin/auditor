@@ -22,7 +22,14 @@ export type AuditEntityType =
   | 'template'
   | 'schedule'
   | 'signoff'
-  | 'workpaper';
+  | 'workpaper'
+  | 'appropriation'
+  | 'obligation'
+  | 'disbursement'
+  | 'ada_violation'
+  | 'travel_order'
+  | 'contract_payment'
+  | 'interagency_agreement';
 
 export interface AuditLogParams {
   userId: string;
