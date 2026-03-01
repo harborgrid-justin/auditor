@@ -30,11 +30,13 @@ import type {
   FMSCaseStatus,
   FMSCaseType,
   FMSTrustFundAccount,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   FMSTrustFundAccountType,
   LetterOfOfferAcceptance,
   LOAAmendment,
   TrustFundTransaction,
   TrustFundTransactionType,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ExcessDefenseArticle,
   EDACondition,
   EDAValuationResult,

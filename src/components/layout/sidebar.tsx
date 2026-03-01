@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Building2, Upload, AlertTriangle, BookOpen,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Receipt, Shield, BarChart3, FileText, Settings, LogOut, ChevronLeft,
   ChevronRight, Scale, Landmark, Gavel, Wallet, ClipboardList
 } from 'lucide-react';

@@ -524,6 +524,7 @@ export function calculateTSPContribution(
   basicPay: number,
   contributionPct: number,
   isBRS: boolean,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   yearsOfService: number,
 ): TSPCalculation {
   const annualLimit = getParameter('DOD_TSP_ELECTIVE_LIMIT', EMBEDDED_TABLE_FY, undefined, 23000);

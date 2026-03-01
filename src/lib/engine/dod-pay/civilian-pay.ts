@@ -52,6 +52,7 @@ const DEFAULT_GS_RAISE_PCT_FALLBACK = 0.046;
 /**
  * Steps represented in the embedded table. We interpolate for other steps.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TABLE_STEPS = [1, 5, 10] as const;
 
 // ---------------------------------------------------------------------------

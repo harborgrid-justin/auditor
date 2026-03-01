@@ -11,6 +11,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   BookOpen, Play, Loader2, XCircle, AlertTriangle,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
@@ -99,6 +100,7 @@ export default function GaapPage() {
         throw new Error(data.error || 'GAAP analysis failed');
       }
       await loadFindings();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'GAAP analysis failed');
     } finally {

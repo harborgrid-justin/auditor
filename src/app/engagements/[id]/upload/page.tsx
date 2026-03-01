@@ -159,6 +159,7 @@ export default function UploadPage() {
           xhr.open('POST', '/api/upload');
           xhr.send(formData);
         });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setMessage({ type: 'error', text: err.message || 'Upload failed' });
         setUploading(false);
@@ -197,6 +198,7 @@ export default function UploadPage() {
         handleUpload(e.dataTransfer.files);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dataType, engagementId]
   );
 

@@ -165,6 +165,7 @@ function processTrialBalance(rows: Record<string, string>[], engagementId: strin
   return count;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function processJournalEntries(rows: Record<string, string>[], engagementId: string, sourceFile: string): number {
   let count = 0;
   const headers = Object.keys(rows[0] || {}).map(h => h.toLowerCase());

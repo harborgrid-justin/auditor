@@ -13,7 +13,7 @@ export const fraudRiskRules: AuditRule[] = [
     enabled: true,
     check: (data) => {
       const findings: AuditFinding[] = [];
-      let riskFactors: string[] = [];
+      const riskFactors: string[] = [];
 
       const revenueAccounts = data.accounts.filter(a => a.accountType === 'revenue');
       const totalRevenue = revenueAccounts.reduce((sum, a) => sum + Math.abs(a.endingBalance), 0);
@@ -87,7 +87,7 @@ export const fraudRiskRules: AuditRule[] = [
     enabled: true,
     check: (data) => {
       const findings: AuditFinding[] = [];
-      let overrideIndicators: string[] = [];
+      const overrideIndicators: string[] = [];
 
       // Unapproved entries
       const unapproved = data.journalEntries.filter(je => !je.approvedBy);

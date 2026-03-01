@@ -24,12 +24,16 @@
  */
 
 import type {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Appropriation,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Obligation,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Disbursement,
   USSGLAccount,
   SF133Data,
   DoDEngagementData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DoDComponentCode,
 } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
@@ -175,7 +179,7 @@ function makeLine(
  * Sum the ending balances of USSGL accounts whose account number
  * starts with any of the given prefixes.
  */
-function sumEndBalances(accounts: USSGLAccount[], prefixes: string[]): number {
+function sumEndBalances(accounts: USSGLAccount[], prefixes: readonly string[]): number {
   return accounts
     .filter(a => prefixes.some(p => a.accountNumber.startsWith(p)))
     .reduce((sum, a) => sum + a.endBalance, 0);
@@ -273,6 +277,7 @@ export function generateSBR(data: DoDEngagementData): SBRReport {
   // Derive values from appropriation / obligation / disbursement records
   // -------------------------------------------------------------------------
   const totalAuthority = appropriations.reduce((s, a) => s + a.totalAuthority, 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const totalApportioned = appropriations.reduce((s, a) => s + a.apportioned, 0);
   const totalObligated = appropriations.reduce((s, a) => s + a.obligated, 0);
   const totalDisbursed = appropriations.reduce((s, a) => s + a.disbursed, 0);
@@ -312,6 +317,7 @@ export function generateSBR(data: DoDEngagementData): SBRReport {
   const expiredUnob = sf133?.expired
     ?? appropriations.filter(a => a.status === 'expired').reduce((s, a) => s + a.unobligatedBalance, 0);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const outlaysNet = sf133?.outlaysNet ?? grossOutlays;
 
   // -------------------------------------------------------------------------

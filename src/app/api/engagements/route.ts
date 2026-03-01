@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { eq, desc, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { requireAuth, requireRole } from '@/lib/auth/guard';

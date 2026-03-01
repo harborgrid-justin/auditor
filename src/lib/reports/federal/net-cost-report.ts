@@ -12,6 +12,7 @@
  *   - DoD FMR Vol 6A, Ch 4
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { USSGLAccount, USSGLTransaction } from '@/types/dod-fmr';
 
 // ---------------------------------------------------------------------------

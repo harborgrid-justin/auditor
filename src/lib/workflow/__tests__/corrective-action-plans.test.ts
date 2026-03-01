@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CorrectiveActionPlanManager,
   type CorrectiveActionPlan,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   type CAPMilestone,
 } from '@/lib/workflow/corrective-action-plans';
 
@@ -506,6 +507,7 @@ describe('CorrectiveActionPlanManager', () => {
         category: 'significant_deficiency',
         priority: 'high',
       }));
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const cap3 = manager.createFromFinding(defaultCAPParams({
         findingId: 'f-3',
         findingTitle: 'NC: Travel Card',
@@ -562,6 +564,7 @@ describe('CorrectiveActionPlanManager', () => {
     it('calculates closure rate correctly', () => {
       const manager = new CorrectiveActionPlanManager();
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const cap1 = manager.createFromFinding(defaultCAPParams({ findingId: 'f-1' }));
       const cap2 = manager.createFromFinding(defaultCAPParams({
         findingId: 'f-2',

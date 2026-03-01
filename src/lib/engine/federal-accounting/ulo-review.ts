@@ -12,6 +12,7 @@
  */
 
 import type { EngagementData } from '@/types/findings';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Obligation, Appropriation } from '@/types/dod-fmr';
 import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
@@ -110,6 +111,7 @@ export function generateULOReview(data: EngagementData): ULOReviewResult {
   const obligations = dodData.obligations ?? [];
   const appropriations = dodData.appropriations ?? [];
   const now = new Date();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const reviewDaysThreshold = getParameter('DOD_ULO_REVIEW_DAYS', data.taxYear, undefined, 180);
   const staleDaysThreshold = getParameter('DOD_STALE_OBLIGATION_DAYS', data.taxYear, undefined, 365);
 

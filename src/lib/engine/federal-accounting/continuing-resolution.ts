@@ -28,6 +28,7 @@ import type {
   Appropriation,
   ContinuingResolution,
   CRConstraintResult,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   CRAnomaly,
 } from '@/types/dod-fmr';
 
@@ -158,6 +159,7 @@ export function applyCRConstraints(
   }
 
   // Prorate for the period of the CR
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fyStart = new Date(`${cr.fiscalYear - 1}-10-01`);
   const totalFYDays = 365;
   const crDays = daysBetween(crStart, checkDate) + 1;

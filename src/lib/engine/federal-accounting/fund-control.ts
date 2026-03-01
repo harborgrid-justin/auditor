@@ -255,6 +255,7 @@ export function checkFundAvailability(
 export function recordCommitment(
   appropriation: Appropriation,
   amount: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   description: string,
 ): { updated: Appropriation; committed: number } {
   if (amount <= 0) {
@@ -560,6 +561,7 @@ export function recordDisbursement(
 export function deobligate(
   obligation: Obligation,
   amount: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   reason: string,
 ): Obligation {
   if (amount <= 0) {

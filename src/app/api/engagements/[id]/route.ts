@@ -13,6 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
     return NextResponse.json(engagement);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
@@ -36,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const updated = db.select().from(schema.engagements).where(eq(schema.engagements.id, params.id)).get();
     return NextResponse.json(updated);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }

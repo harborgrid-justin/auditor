@@ -215,6 +215,7 @@ export const budgetFormulationRules: AuditRule[] = [
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
       const findings: AuditFinding[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { appropriations, fiscalYear } = data.dodData;
 
       const multiYearApprops = appropriations.filter(a => a.appropriationType === 'multi_year');

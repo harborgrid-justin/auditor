@@ -503,6 +503,7 @@ function generateFIARSection(
 function generateManagementLetter(
   input: FederalAuditOpinionInput
 ): FederalAuditReport['managementLetter'] {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { findings, adaViolations, fiarAssessment, componentName, fiscalYear } = input;
 
   const managementFindings: string[] = [];

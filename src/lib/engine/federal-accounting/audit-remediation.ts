@@ -15,8 +15,10 @@
 import type { EngagementData } from '@/types/findings';
 import type {
   CorrectiveActionPlan,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   RemediationMilestone,
   FindingClassification,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   CAPStatus,
 } from '@/types/dod-fmr';
 

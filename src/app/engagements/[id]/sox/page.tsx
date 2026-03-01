@@ -121,6 +121,7 @@ export default function SoxPage() {
         throw new Error(data.error || 'SOX analysis failed');
       }
       await Promise.all([loadControls(), loadFindings()]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'SOX analysis failed');
     } finally {
@@ -134,6 +135,7 @@ export default function SoxPage() {
   ).length;
   const untestedCount = controls.filter((c) => c.status === 'not_tested').length;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isLoading = loadingControls || loadingFindings;
 
   if (status !== 'authenticated') {

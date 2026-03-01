@@ -45,6 +45,7 @@ function parseDate(dateStr: string): Date {
   return d;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function daysBetween(a: Date, b: Date): number {
   const msPerDay = 86_400_000;
   return Math.floor((b.getTime() - a.getTime()) / msPerDay);

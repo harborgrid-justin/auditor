@@ -31,6 +31,7 @@
 import type {
   IntragovernmentalTransaction,
   DoDComponentCode,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ConsolidationElimination,
 } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';

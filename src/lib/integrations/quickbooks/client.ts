@@ -111,7 +111,9 @@ export class QuickBooksClient implements IntegrationProvider {
     const rows = data?.Rows?.Row || [];
 
     return rows
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((row: any) => row.ColData)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((row: any) => {
         const cols = row.ColData;
         return {
@@ -144,10 +146,12 @@ export class QuickBooksClient implements IntegrationProvider {
     const data = await response.json();
     const entries = data?.QueryResponse?.JournalEntry || [];
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return entries.map((je: any) => ({
       entryNumber: je.DocNumber || je.Id,
       date: je.TxnDate,
       description: je.PrivateNote || '',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lines: (je.Line || []).map((line: any) => ({
         accountName: line.JournalEntryLineDetail?.AccountRef?.name || '',
         debit: line.JournalEntryLineDetail?.PostingType === 'Debit' ? parseFloat(line.Amount || '0') : 0,

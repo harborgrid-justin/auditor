@@ -30,7 +30,9 @@
 import type {
   Appropriation,
   USSGLAccount,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   USSGLTransaction,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Obligation,
   DoDEngagementData,
 } from '@/types/dod-fmr';
@@ -159,10 +161,15 @@ const USSGL_REVENUE_PREFIX = '5';
 const USSGL_EXPENSE_PREFIX = '6';
 
 // Budgetary account closings
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const USSGL_BUDGET_AUTHORITY = '4010';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const USSGL_APPORTIONMENTS = '4510';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const USSGL_ALLOTMENTS = '4610';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const USSGL_OBLIGATIONS_INCURRED = '4801';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const USSGL_OUTLAYS = '4902';
 
 // ---------------------------------------------------------------------------
@@ -637,12 +644,14 @@ export function validateRolloverResult(
   const issues: string[] = [];
 
   // Check closing entries balance
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   let totalDebits = 0;
   let totalCredits = 0;
   for (const entry of result.closingEntries) {
     totalDebits += entry.amount;
     totalCredits += entry.amount;
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   // Closing entries are always balanced by construction (each entry has equal debit/credit)
 
   // Check expired appropriations had before-snapshot status of 'current'

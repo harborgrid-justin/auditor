@@ -43,6 +43,7 @@ function round2(n: number): number {
  * Determine the federal fiscal quarter for a given date.
  * FY Q1: Oct-Dec, Q2: Jan-Mar, Q3: Apr-Jun, Q4: Jul-Sep
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getFiscalQuarter(dateStr: string): 1 | 2 | 3 | 4 {
   const month = new Date(dateStr).getMonth(); // 0-based
   if (month >= 9) return 1;  // Oct-Dec

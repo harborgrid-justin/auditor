@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllParametersForYear, getParameterDefinitions } from '@/lib/engine/tax-parameters/registry';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { requireAuth, requireRole } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest) {

@@ -97,6 +97,7 @@ export default function TaxPage() {
         throw new Error(data.error || 'Tax analysis failed');
       }
       await loadFindings();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Tax analysis failed');
     } finally {

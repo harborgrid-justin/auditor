@@ -123,6 +123,7 @@ export class DFASMockAdapter implements DFASAdapter {
     return result;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async fetchDailyAccountability(params: {
     disbursementStationSymbol: string;
     date: string;

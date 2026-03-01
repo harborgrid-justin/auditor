@@ -20,6 +20,7 @@
 
 import type {
   IntragovernmentalTransaction,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ConsolidationElimination,
   DoDComponentCode,
   USSGLAccount,

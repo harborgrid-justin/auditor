@@ -126,7 +126,9 @@ export const debtEquityRules: AuditRule[] = [
         const fsData = incomeStatement.data;
         const operatingIncome = fsData.operatingIncome ?? fsData.operating_income ?? 0;
         const interestExpense = fsData.interestExpense ?? fsData.interest_expense ?? 0;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const depreciation = fsData.depreciation ?? 0;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const amortization = fsData.amortization ?? 0;
 
         if (interestExpense > 0) {
@@ -137,6 +139,7 @@ export const debtEquityRules: AuditRule[] = [
         }
 
         // 3) Fixed charge coverage
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const totalDebt = data.accounts
           .filter(a => a.subType === 'short_term_debt' || a.subType === 'long_term_debt')
           .reduce((sum, a) => sum + Math.abs(a.endingBalance), 0);

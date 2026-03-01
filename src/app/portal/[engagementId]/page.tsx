@@ -31,9 +31,13 @@ export default function ClientPortalDashboard() {
           name: data.engagementName || '',
           status: data.status || '',
           totalFindings: findings.length,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           critical: findings.filter((f: any) => f.severity === 'critical').length,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           high: findings.filter((f: any) => f.severity === 'high').length,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           medium: findings.filter((f: any) => f.severity === 'medium').length,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           low: findings.filter((f: any) => f.severity === 'low').length,
         });
         setLoading(false);

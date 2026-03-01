@@ -469,12 +469,13 @@ export default function ContractCompliancePage() {
                     <XAxis dataKey="name" fontSize={10} />
                     <YAxis fontSize={12} tickFormatter={(v: number) => `$${(v / 1_000_000).toFixed(1)}M`} />
                     <Tooltip
-                      formatter={(value: number) => fmt.format(value)}
-                      labelFormatter={(label: string, payload: any[]) => {
+                      formatter={(value: number | undefined) => fmt.format(value ?? 0)}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      labelFormatter={(label: React.ReactNode, payload: readonly any[]) => {
                         if (payload && payload.length > 0) {
-                          return payload[0]?.payload?.fullNumber || label;
+                          return payload[0]?.payload?.fullNumber || String(label);
                         }
-                        return label;
+                        return String(label);
                       }}
                     />
                     <Legend />

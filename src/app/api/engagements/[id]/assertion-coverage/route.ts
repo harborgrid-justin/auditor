@@ -25,6 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .where(eq(schema.engagements.id, engagementId))
       .get();
 
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     const entries: AssertionCoverageEntry[] = coverageEntries.map(e => ({
       accountName: e.accountName,
       accountType: e.accountType,
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       coveredBy: e.coveredBy,
       status: e.status as any,
     }));
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     const matrix = generateCoverageMatrix(
       accounts.map(a => ({

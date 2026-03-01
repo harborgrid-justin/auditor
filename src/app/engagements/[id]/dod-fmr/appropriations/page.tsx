@@ -200,6 +200,7 @@ export default function AppropriationManagementPage() {
         if (!res.ok) throw new Error('Failed to load appropriations');
         const data = await res.json();
         setAppropriations(data.appropriations || []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         console.error('Failed to load appropriations:', err);
         setError(err.message || 'Failed to load appropriations');
@@ -414,6 +415,7 @@ export default function AppropriationManagementPage() {
         unobligatedBalance: '',
       });
       setFormErrors({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setFormErrors({ _form: err.message || 'Submission failed' });
     } finally {
@@ -1095,7 +1097,7 @@ export default function AppropriationManagementPage() {
                         tickFormatter={(val: number) => formatCurrencyCompact(val)}
                       />
                       <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
+                        formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                         labelStyle={{ fontWeight: 600 }}
                       />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
@@ -1143,10 +1145,11 @@ export default function AppropriationManagementPage() {
                           tick={{ fill: '#6b7280' }}
                         />
                         <Tooltip
-                          formatter={(value: number) => `${value.toFixed(1)}%`}
-                          labelFormatter={(label: string) => {
-                            const item = executionRateData.find((d: { name: string; rate: number; tas: string }) => d.name === label);
-                            return item ? `${label} (${item.tas})` : label;
+                          formatter={(value: number | undefined) => `${(value ?? 0).toFixed(1)}%`}
+                          labelFormatter={(label: React.ReactNode) => {
+                            const labelStr = String(label);
+                            const item = executionRateData.find((d: { name: string; rate: number; tas: string }) => d.name === labelStr);
+                            return item ? `${labelStr} (${item.tas})` : labelStr;
                           }}
                         />
                         <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
@@ -1197,8 +1200,8 @@ export default function AppropriationManagementPage() {
                           outerRadius={110}
                           innerRadius={50}
                           paddingAngle={2}
-                          label={({ name, percent }: { name: string; percent: number }) =>
-                            `${name} ${(percent * 100).toFixed(0)}%`
+                          label={({ name, percent }: { name?: string; percent?: number }) =>
+                            `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
                           }
                           labelLine
                         >
@@ -1207,7 +1210,7 @@ export default function AppropriationManagementPage() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value: number) => formatCurrency(value)}
+                          formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                         />
                         <Legend />
                       </PieChart>

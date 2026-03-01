@@ -248,6 +248,7 @@ export function enableFIPSMode(): FIPSStatus {
       crypto.setFips(1);
     } else {
       // Legacy Node.js: set via fips property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (crypto as any).fips = 1;
     }
 
@@ -290,6 +291,7 @@ export function verifyFIPSStatus(): FIPSStatus {
     if (typeof crypto.getFips === 'function') {
       enabled = crypto.getFips() === 1;
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       enabled = (crypto as any).fips === 1;
     }
   } catch {
@@ -336,7 +338,7 @@ export function validateCipherSuite(suite: string): CipherValidation {
   }
 
   // Check known non-FIPS algorithms
-  for (const [algo, info] of NON_FIPS_ALGORITHMS) {
+  for (const [algo, info] of Array.from(NON_FIPS_ALGORITHMS.entries())) {
     if (normalized === algo || normalized.includes(algo)) {
       return {
         cipher: suite,
@@ -487,7 +489,7 @@ export function detectNonFIPSAlgorithm(algorithm: string): {
   }
 
   // Partial match (e.g., 'des-cbc-sha' contains 'des')
-  for (const [algo, info] of NON_FIPS_ALGORITHMS) {
+  for (const [algo, info] of Array.from(NON_FIPS_ALGORITHMS.entries())) {
     if (normalized.includes(algo) && !normalized.includes('aes')) {
       return {
         nonFIPS: true,
@@ -560,7 +562,7 @@ export function generateFIPSComplianceReport(): FIPSComplianceReport {
     }
   }
   // Deduplicate
-  const uniqueNonFIPS = [...new Set(nonFIPSAlgorithmsDetected)];
+  const uniqueNonFIPS = Array.from(new Set(nonFIPSAlgorithmsDetected));
 
   // Validate default TLS settings
   const tlsValidation = validateTLSConfig({
@@ -602,6 +604,7 @@ export function generateFIPSComplianceReport(): FIPSComplianceReport {
  */
 function getOpenSSLVersion(): string {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (process.versions as any).openssl || 'unknown';
   } catch {
     return 'unknown';

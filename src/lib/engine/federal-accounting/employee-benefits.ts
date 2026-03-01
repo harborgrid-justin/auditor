@@ -597,6 +597,7 @@ export function validateEmployeeBenefits(data: EngagementData): BenefitsValidati
  */
 export function validateActuarialAssumptions(
   assumptions: ActuarialAssumptions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fiscalYear: number,
 ): BenefitsFinding[] {
   const findings: BenefitsFinding[] = [];

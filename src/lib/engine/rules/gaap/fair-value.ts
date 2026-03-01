@@ -86,6 +86,7 @@ export const fairValueRules: AuditRule[] = [
 
       if (intangibleBeginning > 0) {
         const intangibleDecline = intangibleBeginning - intangibleEnding;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const declinePct = intangibleDecline / intangibleBeginning;
 
         // Check if amortization seems reasonable relative to the intangible balance

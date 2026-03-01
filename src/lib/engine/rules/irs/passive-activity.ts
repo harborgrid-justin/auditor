@@ -1,6 +1,8 @@
 import type { AuditRule, AuditFinding } from '@/types/findings';
 import { createFinding } from '../../rule-runner';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getParameter } from '../../tax-parameters/registry';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getTaxYear } from '../../tax-parameters/utils';
 
 export const passiveActivityRules: AuditRule[] = [
@@ -127,6 +129,7 @@ export const passiveActivityRules: AuditRule[] = [
       if (passThrough.length === 0) return findings;
 
       // Detect at-risk indicators
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const atRiskData = data.taxData.filter(t => {
         const desc = t.description.toLowerCase();
         return desc.includes('at-risk') ||

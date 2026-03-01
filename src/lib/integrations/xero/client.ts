@@ -154,11 +154,14 @@ export class XeroClient implements IntegrationProvider {
     const journals = data?.Journals || [];
 
     return journals
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((j: any) => j.JournalDate >= startDate && j.JournalDate <= endDate)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((j: any) => ({
         entryNumber: j.JournalNumber?.toString() || j.JournalID,
         date: j.JournalDate,
         description: j.Reference || '',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         lines: (j.JournalLines || []).map((line: any) => ({
           accountName: line.AccountName || '',
           debit: line.NetAmount > 0 ? line.NetAmount : 0,

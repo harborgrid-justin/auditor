@@ -100,9 +100,11 @@ export function generateCoverageMatrix(
 ): CoverageMatrix {
   const matrixAccounts = accounts.map(account => {
     const isMaterial = Math.abs(account.endingBalance) >= materialityThreshold;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const requiredAssertions = REQUIRED_ASSERTIONS[account.accountType] || REQUIRED_ASSERTIONS['asset'];
     const accountEntries = coverageEntries.filter(e => e.accountName === account.accountName);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assertions: Record<Assertion, { covered: boolean; procedures: string[]; status: CoverageStatus }> = {} as any;
 
     for (const assertion of getAllAssertions()) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { AuditRule, EngagementData, AuditFinding } from '@/types/findings';
 import { createFinding } from '@/lib/engine/rule-runner';
 import { getParameter } from '@/lib/engine/tax-parameters/registry';

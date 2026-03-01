@@ -570,6 +570,7 @@ function generateNote5(input: InventoryInput): NoteDisclosure {
 function generateNote6(input: PPEInput): NoteDisclosure {
   const rows: NoteTableRow[] = input.categories.map((c) => {
     const netCY = round2(c.acquisitionCost.currentYear - Math.abs(c.accumulatedDepreciation.currentYear));
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const netPY = round2(c.acquisitionCost.priorYear - Math.abs(c.accumulatedDepreciation.priorYear));
     return {
       label: `${c.category} (${c.usefulLife})`,

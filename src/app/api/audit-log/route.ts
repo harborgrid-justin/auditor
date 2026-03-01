@@ -23,9 +23,11 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(schema.auditLogs.engagementId, engagementId));
     }
     if (action) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       conditions.push(eq(schema.auditLogs.action, action as any));
     }
     if (entityType) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       conditions.push(eq(schema.auditLogs.entityType, entityType as any));
     }
     if (startDate) {

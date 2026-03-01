@@ -38,9 +38,11 @@ const BenfordChart = dynamic(
               label={{ value: 'Frequency (%)', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={((value: any, name: any) => [
                 `${Number(value).toFixed(2)}%`,
                 name === 'expected' ? 'Expected (Benford)' : 'Observed',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ]) as any}
             />
             <Legend />
@@ -102,6 +104,7 @@ interface JournalTest {
   flaggedAmount?: number;
   status?: string;
   riskLevel?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   flaggedEntries?: any[];
 }
 
@@ -163,6 +166,7 @@ export default function AnalysisPage() {
   const [ratiosLoaded, setRatiosLoaded] = useState(false);
 
   // Benford's Law state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [benfordData, setBenfordData] = useState<any>(null);
   const [loadingBenford, setLoadingBenford] = useState(false);
   const [benfordLoaded, setBenfordLoaded] = useState(false);
@@ -173,6 +177,7 @@ export default function AnalysisPage() {
   const [journalTestsLoaded, setJournalTestsLoaded] = useState(false);
 
   // Trend Analysis state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [trends, setTrends] = useState<any>(null);
   const [loadingTrends, setLoadingTrends] = useState(false);
   const [trendsLoaded, setTrendsLoaded] = useState(false);
@@ -260,6 +265,7 @@ export default function AnalysisPage() {
       loadJournalTests();
       loadTrends();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, engagementId]);
 
   async function refreshAll() {
@@ -660,6 +666,7 @@ export default function AnalysisPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                           {test.flaggedEntries.map((entry: any, j: number) => (
                             <TableRow key={j}>
                               <TableCell className="font-mono text-sm">{entry.entryNumber}</TableCell>

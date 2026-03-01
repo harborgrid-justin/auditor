@@ -27,6 +27,7 @@
 import type {
   USSGLAccount,
   DoDEngagementData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DoDComponentCode,
 } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
@@ -170,6 +171,7 @@ function sumEnd(accounts: USSGLAccount[], prefixes: string[]): number {
 /**
  * Sum the beginning balances of USSGL accounts matching the given prefixes.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function sumBegin(accounts: USSGLAccount[], prefixes: string[]): number {
   return accounts
     .filter(a => prefixes.some(p => a.accountNumber.startsWith(p)))
@@ -183,6 +185,7 @@ function sumBegin(accounts: USSGLAccount[], prefixes: string[]): number {
  * patterns such as 1xxx00-1xxx99 with intra identifiers are used.
  * Simplified: accounts whose 4-digit number is in intra-specific ranges.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function isIntragovernmentalAccount(accountNumber: string): boolean {
   const num = parseInt(accountNumber.substring(0, 4), 10);
   // Intragovernmental asset accounts: 1010-1099, 1310-1399, 1600-1699

@@ -43,6 +43,7 @@ const RECONCILIATION_TOLERANCE = 0.01;
  * to the proprietary track: assets, liabilities, net position,
  * revenue, and expense.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PROPRIETARY_CATEGORIES = new Set([
   'asset',
   'liability',
@@ -55,6 +56,7 @@ const PROPRIETARY_CATEGORIES = new Set([
  * Budgetary USSGL categories. Accounts in these categories belong
  * to the budgetary track: budgetary resources and status of resources.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BUDGETARY_CATEGORIES = new Set([
   'budgetary_resource',
   'status_of_resources',

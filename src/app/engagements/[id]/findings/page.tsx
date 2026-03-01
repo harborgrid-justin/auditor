@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,7 @@ export default function FindingsPage() {
         throw new Error(data.error || 'Analysis failed');
       }
       await loadFindings();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Analysis failed');
     } finally {

@@ -82,6 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       engagement.materialityThreshold
     );
 
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     const assertionEntries: AssertionCoverageEntry[] = coverageEntries.map(e => ({
       accountName: e.accountName,
       accountType: e.accountType,
@@ -92,6 +93,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       coveredBy: e.coveredBy,
       status: e.status as any,
     }));
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     const assertionCoverage = generateCoverageMatrix(
       accounts.map(a => ({ accountName: a.accountName, accountType: a.accountType, endingBalance: a.endingBalance })),
@@ -101,6 +103,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const samplingConclusions = samplingPlans.map(p => ({
       name: p.name,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       conclusion: p.conclusion as any,
       rationale: p.conclusionNotes ?? '',
     }));
@@ -129,7 +132,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Latest going concern assessment
     const latestGC = gcAssessments.length > 0
       ? {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           conclusion: gcAssessments[gcAssessments.length - 1].conclusion as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           opinionImpact: gcAssessments[gcAssessments.length - 1].opinionImpact as any,
           disclosureAdequate: gcAssessments[gcAssessments.length - 1].disclosureAdequate,
           quantitativeIndicators: JSON.parse(gcAssessments[gcAssessments.length - 1].quantitativeIndicatorsJson),
@@ -167,6 +172,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       scopeLimitationsResolved: scopeEvaluation.opinionImpact === 'none',
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const clItems: ChecklistItemStatus[] = (checklistItems.length > 0 ? checklistItems : STANDARD_CHECKLIST.map(item => ({
       ...item,
       id: '',
@@ -178,12 +184,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       notes: null,
     }))).map(item => ({
       itemKey: item.itemKey,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       category: item.category as any,
       description: item.description,
       autoCheck: item.autoCheck,
       required: item.required,
       status: item.autoCheck && autoCheckResults[item.itemKey]
         ? 'completed'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         : (item.status as any) || 'not_started',
       autoCheckResult: item.autoCheck ? autoCheckResults[item.itemKey] : undefined,
       completedBy: ('completedBy' in item ? item.completedBy : undefined) as string | undefined,

@@ -1,5 +1,6 @@
 import type { AuditRule, AuditFinding } from '@/types/findings';
 import { createFinding } from '../../rule-runner';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getParameter } from '../../tax-parameters/registry';
 import { getTaxYear } from '../../tax-parameters/utils';
 

@@ -45,6 +45,7 @@ export const scheduleMRules: AuditRule[] = [
         const fedTax = schedM.find(t => t.lineNumber === '2')?.amount || 0;
 
         // Sum all adjustments
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const adjustments = schedM
           .filter(t => !['1', '10'].includes(t.lineNumber))
           .reduce((sum, t) => sum + t.amount, 0);

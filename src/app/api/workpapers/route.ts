@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       .all();
 
     return NextResponse.json({ workpapers: papers });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch workpapers' }, { status: 500 });
   }
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ id, fileName: file.name }, { status: 201 });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to upload workpaper' }, { status: 500 });
   }

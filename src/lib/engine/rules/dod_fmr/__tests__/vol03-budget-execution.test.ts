@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { budgetExecutionRules } from '../vol03-budget-execution';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { EngagementData, AuditFinding } from '@/types/findings';
 import type { DoDEngagementData } from '@/types/dod-fmr';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Appropriation, Obligation, FundControl } from '@/types/dod-fmr';
 
 // ---------------------------------------------------------------------------

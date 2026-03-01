@@ -123,8 +123,8 @@ export function calculateAccuracyPenalty(
   const isSubstantial = understatement > substantialThreshold;
 
   const mitigatingFactors: string[] = [];
-  let defenseAvailable = true;
-  let defenseDescription: string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const defenseAvailable = true;
 
   let penaltyRate: number;
   let ircSection: string;
@@ -161,7 +161,7 @@ export function calculateAccuracyPenalty(
     'Reasonable cause and good faith defense available under IRC §6664(c)'
   );
 
-  defenseDescription =
+  const defenseDescription =
     'Reasonable cause and good faith exception under IRC §6664(c). For substantial understatement, ' +
     'the penalty may be avoided if the position has substantial authority or was adequately disclosed. ' +
     'Reliance on professional advice may constitute reasonable cause.';

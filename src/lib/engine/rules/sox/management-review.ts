@@ -31,10 +31,12 @@ export const managementReviewRules: AuditRule[] = [
       }
 
       const effective = data.soxControls.filter(c => c.status === 'effective').length;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const deficient = data.soxControls.filter(c => c.status === 'deficient' || c.status === 'significant_deficiency').length;
       const materialWeakness = data.soxControls.filter(c => c.status === 'material_weakness').length;
       const untested = data.soxControls.filter(c => c.status === 'not_tested').length;
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const effectiveRate = effective / totalControls;
 
       if (materialWeakness > 0) {

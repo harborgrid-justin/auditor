@@ -234,6 +234,7 @@ export const militaryPayRules: AuditRule[] = [
         // Half separation pay = 5% x yearsOfService x 12 x monthly basic pay
         const monthlyBasicPay = record.basicPay / 12;
         const fullSepPay = 0.10 * record.yearsOfService * 12 * monthlyBasicPay;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const halfSepPay = fullSepPay / 2;
 
         // Check if the separation pay is within a reasonable range

@@ -540,7 +540,7 @@ function SF133Viewer({ data }: { data: SF133Data }) {
                     }
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                     labelStyle={{ fontWeight: 600 }}
                   />
                   <Bar dataKey="value" name="Amount" radius={[4, 4, 0, 0]}>

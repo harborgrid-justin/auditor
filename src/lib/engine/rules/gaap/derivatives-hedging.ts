@@ -124,6 +124,7 @@ export const derivativesHedgingRules: AuditRule[] = [
 
       // Look for AOCI balances that may contain hedge-related amounts
       const aociAccounts = data.accounts.filter(a => a.subType === 'aoci');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const totalAOCI = aociAccounts.reduce((sum, a) => sum + Math.abs(a.endingBalance), 0);
 
       // Check for hedge effectiveness documentation indicators:

@@ -33,6 +33,7 @@
 import type {
   USSGLAccount,
   DoDEngagementData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DoDComponentCode,
 } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
@@ -161,6 +162,7 @@ function isIntragovernmentalCostRevenue(accountNumber: string): boolean {
  * Sum ending balances for accounts matching prefixes, taking absolute
  * values since expense accounts carry debit balances.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function sumAbsoluteEnd(accounts: USSGLAccount[], prefixes: string[]): number {
   return accounts
     .filter(a => prefixes.some(p => a.accountNumber.startsWith(p)))
@@ -262,7 +264,7 @@ export function generateNetCostStatement(data: DoDEngagementData): NetCostStatem
   // -------------------------------------------------------------------------
   const programs: ProgramCostDetail[] = [];
 
-  for (const [name, data] of programAccumulator.entries()) {
+  for (const [name, data] of Array.from(programAccumulator.entries())) {
     const totalGrossCost = data.grossCostIntra + data.grossCostPublic;
     const totalRevenue = data.revIntra + data.revPublic;
 

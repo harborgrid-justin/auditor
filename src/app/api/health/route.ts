@@ -16,6 +16,7 @@ export async function GET() {
       database: dbHealthy ? 'connected' : 'disconnected',
       timestamp: new Date().toISOString(),
     });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json(
       {

@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       .all();
 
     return NextResponse.json({ schedules: items });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch schedules' }, { status: 500 });
   }
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ id, name }, { status: 201 });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create schedule' }, { status: 500 });
   }

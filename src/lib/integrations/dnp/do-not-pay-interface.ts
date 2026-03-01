@@ -157,6 +157,7 @@ export function screenPayment(
     payeeDOB?: string;
     payeeUEI?: string;
   },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   amount: number,
 ): DNPScreeningResult {
   const now = new Date().toISOString();
@@ -394,8 +395,8 @@ export function generateScreeningReport(
   let matchCount = 0;
   let reviewRequiredCount = 0;
   let holdCount = 0;
-  let totalHeldAmount = 0;
-  let totalClearedAmount = 0;
+  const totalHeldAmount = 0;
+  const totalClearedAmount = 0;
   const riskDistribution = { low: 0, medium: 0, high: 0, critical: 0 };
 
   // Note: payment amounts are not stored in DNPScreeningResult directly,

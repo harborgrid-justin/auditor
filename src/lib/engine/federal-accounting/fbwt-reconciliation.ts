@@ -98,6 +98,7 @@ const STALE_ITEM_THRESHOLD_DAYS = 120;
  * USSGL 1010 -- the proprietary general ledger account that records
  * the entity's fund balance with Treasury.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const USSGL_FBWT_ACCOUNT = '1010';
 
 // ---------------------------------------------------------------------------
@@ -183,6 +184,7 @@ export function reconcileFBWT(data: EngagementData): FBWTReconciliationResult[] 
     outlays: { outlaysNet: number };
     budgetaryResources: { totalBudgetaryResources: number };
     statusOfBudgetaryResources: { newObligationsAndUpwardAdjustments: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }> = ((dodData as any).sf133Data as any[]) || [];
 
   // Build a lookup of appropriation IDs to their parent TAS

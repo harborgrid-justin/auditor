@@ -32,11 +32,16 @@
  */
 
 import type {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   USSGLAccount,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   USSGLTransaction,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DualTrackReconciliation,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Appropriation,
   DoDEngagementData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   FIARAssessment,
 } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
@@ -189,7 +194,7 @@ function assessFinancialSystems(data: DoDEngagementData): FFMIASystemRequirement
     findings: !hasAppropriations
       ? ['No appropriations configured in system']
       : statuses.size === 1
-        ? [`All appropriations in single status "${[...statuses][0]}" — lifecycle tracking may not be active`]
+        ? [`All appropriations in single status "${Array.from(statuses)[0]}" — lifecycle tracking may not be active`]
         : [],
     references: ['DoD FMR Vol. 3, Ch. 2', '31 U.S.C. §1552-1555'],
   });

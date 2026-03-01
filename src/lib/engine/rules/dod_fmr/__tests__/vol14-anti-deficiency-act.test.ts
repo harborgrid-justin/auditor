@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { antiDeficiencyActRules } from '../vol14-anti-deficiency-act';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { EngagementData, AuditFinding } from '@/types/findings';
 import type {
   Appropriation,

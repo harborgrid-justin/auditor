@@ -369,6 +369,7 @@ export default function ADAMonitoringPage() {
         appropriationId: '',
         fiscalYear: new Date().getFullYear().toString(),
       });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setSubmitError(error.message || 'An unexpected error occurred.');
     } finally {

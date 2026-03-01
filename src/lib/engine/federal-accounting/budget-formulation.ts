@@ -208,6 +208,7 @@ export interface ValidationResult {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseDate(dateStr: string): Date {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) {
@@ -444,9 +445,9 @@ export function generateBES(
     }, 0),
   );
 
-  const ombExhibitsIncluded = [
-    ...new Set(exhibits.map(ex => ex.exhibitType)),
-  ];
+  const ombExhibitsIncluded = Array.from(
+    new Set(exhibits.map(ex => ex.exhibitType)),
+  );
 
   const missingExhibits = REQUIRED_OMB_EXHIBITS.filter(
     req => !ombExhibitsIncluded.includes(req),
@@ -643,7 +644,7 @@ export function trackUnfundedRequirements(
 
   // Verify priority ordering (should be 1..N with no gaps)
   const priorities = requirements.map(r => r.priority).sort((a, b) => a - b);
-  const uniquePriorities = [...new Set(priorities)];
+  const uniquePriorities = Array.from(new Set(priorities));
   if (uniquePriorities.length < requirements.length) {
     warnings.push(
       'Multiple unfunded requirements share the same priority level. ' +
@@ -764,7 +765,7 @@ export function validateBudgetHierarchy(
     }
   }
 
-  for (const [parentCode, children] of childrenByParent) {
+  for (const [parentCode, children] of Array.from(childrenByParent.entries())) {
     const parent = nodeMap.get(parentCode);
     if (!parent) continue;
 

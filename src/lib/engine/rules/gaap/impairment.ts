@@ -75,6 +75,7 @@ export const impairmentRules: AuditRule[] = [
     check: (data) => {
       const findings: AuditFinding[] = [];
       const fixedAssetAccounts = data.accounts.filter(a => a.subType === 'fixed_asset');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const depreciationExpenseAccounts = data.accounts.filter(a => a.subType === 'depreciation');
 
       // Compute gross fixed assets and accumulated depreciation

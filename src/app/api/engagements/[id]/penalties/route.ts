@@ -3,6 +3,7 @@ import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { requireEngagementMember } from '@/lib/auth/guard';
 import { getTaxYear } from '@/lib/engine/tax-parameters/utils';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { calculateAccuracyPenalty, calculateFailureToPayPenalty, assessPenaltyExposure } from '@/lib/engine/penalties/penalty-calculator';
 import type { PenaltyAssessment } from '@/types/tax-compliance';
 

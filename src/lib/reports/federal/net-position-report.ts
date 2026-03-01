@@ -86,6 +86,7 @@ export function generateNetPositionReport(
   // Calculate unexpended appropriations from appropriation records
   const totalAuthority = appropriations.reduce((sum, a) => sum + a.totalAuthority, 0);
   const totalDisbursed = appropriations.reduce((sum, a) => sum + a.disbursed, 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const totalObligated = appropriations.reduce((sum, a) => sum + a.obligated, 0);
 
   // USSGL account analysis for net position components

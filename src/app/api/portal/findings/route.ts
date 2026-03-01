@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth } from '@/lib/auth/guard';
 
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
       status: engagement.status,
       findings,
     });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch findings' }, { status: 500 });
   }

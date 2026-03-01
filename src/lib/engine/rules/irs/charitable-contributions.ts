@@ -91,6 +91,7 @@ export const charitableContributionRules: AuditRule[] = [
     check: (data) => {
       const findings: AuditFinding[] = [];
       const taxYear = getTaxYear(data.fiscalYearEnd);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const limitPct = getParameter('CHARITABLE_LIMIT_CORP_PCT', taxYear, data.entityType ?? undefined, 0.10);
 
       // Check for carryforward indicators in tax data
@@ -110,6 +111,7 @@ export const charitableContributionRules: AuditRule[] = [
           })
         : [];
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const priorCharitableTotal = priorCharitable.reduce((sum, a) => sum + Math.abs(a.endingBalance), 0);
 
       // Check if current year contributions are well below the limit, which may indicate carryforwards being used

@@ -188,6 +188,7 @@ const DAIMS_REQUIRED_ELEMENTS: Record<DATAActFileType, string[]> = {
  * The actual DAIMS specification has 57 core elements; this constant
  * tracks the simplified set used in this validation engine.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DAIMS_TOTAL_REQUIRED_ELEMENTS = 57;
 
 // ---------------------------------------------------------------------------

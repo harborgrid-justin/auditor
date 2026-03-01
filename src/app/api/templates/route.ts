@@ -17,6 +17,7 @@ export async function GET() {
       .all();
 
     return NextResponse.json({ templates });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
   }
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ id, name }, { status: 201 });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
   }

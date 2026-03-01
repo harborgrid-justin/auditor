@@ -328,6 +328,7 @@ export function determineEnhancedOpinion(data: EnhancedOpinionData): EnhancedOpi
     rationale = 'Certain findings require attention but do not rise to the level of an adverse opinion.';
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const readyForIssuance = opinionType !== 'unqualified' || blockers.length === 0;
 
   const opinionLabels: Record<OpinionType, string> = {

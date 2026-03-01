@@ -28,6 +28,7 @@ import { getParameter } from '@/lib/engine/tax-parameters/registry';
 const LARGE_BUSINESS_PROGRESS_RATE_FALLBACK = 0.80;
 
 /** Fallback progress payment rate for small businesses (FAR 32.501-1(b)). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SMALL_BUSINESS_PROGRESS_RATE_FALLBACK = 0.85;
 
 /** Default retainage percentages by contract type. */

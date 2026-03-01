@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AlertTriangle, Building2, CheckCircle, Shield, TrendingUp,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   FileText, BarChart3, Plus, ArrowRight, BookOpen, Receipt, Scale
 } from 'lucide-react';
 import Link from 'next/link';
@@ -43,6 +44,7 @@ export default function DashboardPage() {
         })
         .catch(() => {});
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   if (status === 'loading') {

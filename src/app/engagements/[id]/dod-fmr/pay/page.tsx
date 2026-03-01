@@ -618,7 +618,7 @@ export default function PayCompliancePage() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="grade" fontSize={11} angle={-45} textAnchor="end" height={60} />
                       <YAxis fontSize={12} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}K`} />
-                      <Tooltip formatter={(value: number) => fmt.format(value)} />
+                      <Tooltip formatter={(value: number | undefined) => fmt.format(value ?? 0)} />
                       <Legend />
                       <Bar dataKey="military" name="Military" fill={GRADE_COLORS[0]} radius={[4, 4, 0, 0]} />
                       <Bar dataKey="civilian" name="Civilian" fill={GRADE_COLORS[1]} radius={[4, 4, 0, 0]} />

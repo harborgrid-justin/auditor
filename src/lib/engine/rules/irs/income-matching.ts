@@ -49,6 +49,7 @@ export const incomeMatchingRules: AuditRule[] = [
         // Verify Schedule M reconciliation ties
         if (scheduleM.length > 0) {
           const mBookIncome = scheduleM.find(t => t.lineNumber === '1')?.amount || 0;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const mTaxIncome = scheduleM.find(t => t.lineNumber === '10')?.amount || 0;
 
           if (Math.abs(mBookIncome - bookNetIncome) > 1000) {

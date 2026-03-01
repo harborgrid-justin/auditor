@@ -405,6 +405,7 @@ export const reportingPolicyRules: AuditRule[] = [
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
       const findings: AuditFinding[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { appropriations, disbursements, collections } = data.dodData;
 
       const totalDisbursed = appropriations.reduce((sum, a) => sum + a.disbursed, 0);

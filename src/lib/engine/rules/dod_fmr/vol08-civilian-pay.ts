@@ -274,6 +274,7 @@ export const civilianPayRules: AuditRule[] = [
       const findings: AuditFinding[] = [];
 
       // Approximate GS-15 Step 10 rate (base + typical locality average)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const gs15Step10Base = 150000;
       const gs15Step10WithLocality = 195000; // Approximate with average locality
 

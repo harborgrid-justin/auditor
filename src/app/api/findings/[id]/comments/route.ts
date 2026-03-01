@@ -18,6 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .all();
 
     return NextResponse.json({ comments });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });
   }
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
 
     return NextResponse.json({ id, comment, createdAt: now }, { status: 201 });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 });
   }

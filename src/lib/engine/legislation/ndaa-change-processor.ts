@@ -26,8 +26,10 @@
  */
 
 import type { FMRRevision } from '@/types/dod-fmr';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { TaxParameter } from '@/types/tax-compliance';
 import { v4 as uuid } from 'uuid';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { registerRuleVersion, getActiveRule, getAllVersionsForRule } from './rule-version-registry';
 
 // ---------------------------------------------------------------------------

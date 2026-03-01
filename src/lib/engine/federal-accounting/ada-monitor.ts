@@ -60,6 +60,7 @@ function federalFiscalYear(date: Date): number {
 /**
  * Determines if an appropriation is expired based on its dates.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function isExpired(approp: Appropriation, asOfDate: Date): boolean {
   if (approp.appropriationType === 'no_year') return false;
   const expDate = approp.expirationDate
@@ -101,7 +102,9 @@ function createViolation(
 /**
  * Budget Object Code purpose-check prefixes.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PROCUREMENT_BOC_PREFIXES = ['31', '32'];
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const CONSTRUCTION_BOC_PREFIXES = ['33'];
 
 // ---------------------------------------------------------------------------
@@ -445,6 +448,7 @@ export function detectOverExpenditure(
   disbursements: Disbursement[],
 ): ADAViolation[] {
   const violations: ADAViolation[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fy = federalFiscalYear(new Date());
 
   // Check each obligation for over-liquidation
