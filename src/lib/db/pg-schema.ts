@@ -34,7 +34,10 @@ CREATE TABLE IF NOT EXISTS engagements (
   industry VARCHAR(100),
   entity_type VARCHAR(20) CHECK (entity_type IN ('c_corp', 's_corp', 'partnership', 'llc', 'nonprofit')),
   created_by UUID NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  classification VARCHAR(20) DEFAULT 'unclassified' CHECK (classification IN ('unclassified', 'cui', 'cui_specified', 'fouo')),
+  archived_at TIMESTAMPTZ,
+  retention_until DATE
 );
 
 -- Engagement Members
@@ -160,4 +163,68 @@ CREATE TABLE IF NOT EXISTS schedules (
   created_by UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Reprogramming Actions (DD-1414)
+CREATE TABLE IF NOT EXISTS reprogramming_actions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  engagement_id UUID NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+  reprogramming_type VARCHAR(30) NOT NULL CHECK (reprogramming_type IN ('below_threshold', 'above_threshold', 'reprogramming', 'transfer', 'realignment')),
+  from_appropriation_id UUID NOT NULL,
+  to_appropriation_id UUID NOT NULL,
+  amount DOUBLE PRECISION NOT NULL,
+  justification TEXT NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'pending_approval', 'approved', 'rejected', 'executed', 'congressional_notification')),
+  congressional_notification_required BOOLEAN NOT NULL DEFAULT FALSE,
+  approved_by UUID,
+  approved_at TIMESTAMPTZ,
+  executed_at TIMESTAMPTZ,
+  fiscal_year INTEGER NOT NULL,
+  created_by UUID NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Rule Version History
+CREATE TABLE IF NOT EXISTS rule_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  rule_id VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  content_json JSONB NOT NULL,
+  effective_date DATE NOT NULL,
+  sunset_date DATE,
+  changed_by UUID NOT NULL,
+  change_reason TEXT NOT NULL,
+  legislation_id VARCHAR(255),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_rule_versions_rule_id ON rule_versions(rule_id);
+CREATE INDEX IF NOT EXISTS idx_rule_versions_effective ON rule_versions(rule_id, effective_date DESC);
+
+-- Approval Chains
+CREATE TABLE IF NOT EXISTS approval_chains (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  engagement_id UUID NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+  entity_type VARCHAR(20) NOT NULL CHECK (entity_type IN ('disbursement', 'ada_violation', 'reprogramming', 'debt_writeoff', 'report', 'obligation')),
+  entity_id UUID NOT NULL,
+  current_step_index INTEGER NOT NULL DEFAULT 0,
+  overall_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (overall_status IN ('pending', 'approved', 'rejected', 'escalated', 'expired')),
+  initiated_by UUID NOT NULL,
+  initiated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_approval_chains_entity ON approval_chains(entity_type, entity_id);
+
+-- Approval Steps
+CREATE TABLE IF NOT EXISTS approval_steps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chain_id UUID NOT NULL REFERENCES approval_chains(id) ON DELETE CASCADE,
+  step_index INTEGER NOT NULL,
+  required_role VARCHAR(50) NOT NULL,
+  assigned_to UUID,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'escalated', 'expired')),
+  decision VARCHAR(10) CHECK (decision IN ('approve', 'reject')),
+  comment TEXT,
+  decided_at TIMESTAMPTZ,
+  due_date TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_approval_steps_chain ON approval_steps(chain_id, step_index);
 `;

@@ -20,6 +20,9 @@ export const engagements = sqliteTable('engagements', {
   entityType: text('entity_type', { enum: ['c_corp', 's_corp', 'partnership', 'llc', 'nonprofit', 'dod_component', 'defense_agency', 'combatant_command', 'working_capital_fund', 'naf_entity'] }),
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull(),
+  classification: text('classification', { enum: ['unclassified', 'cui', 'cui_specified', 'fouo'] }).default('unclassified'),
+  archivedAt: text('archived_at'),
+  retentionUntil: text('retention_until'),
 });
 
 export const engagementMembers = sqliteTable('engagement_members', {
@@ -934,4 +937,76 @@ export const fiarAssessments = sqliteTable('fiar_assessments', {
   }).notNull(),
   assessedBy: text('assessed_by').notNull(),
   createdAt: text('created_at').notNull(),
+});
+
+// --- Reprogramming Actions (DD-1414) ---
+
+export const reprogrammingActions = sqliteTable('reprogramming_actions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  reprogrammingType: text('reprogramming_type', {
+    enum: ['below_threshold', 'above_threshold', 'reprogramming', 'transfer', 'realignment'],
+  }).notNull(),
+  fromAppropriationId: text('from_appropriation_id').notNull(),
+  toAppropriationId: text('to_appropriation_id').notNull(),
+  amount: real('amount').notNull(),
+  justification: text('justification').notNull(),
+  status: text('status', {
+    enum: ['draft', 'pending_approval', 'approved', 'rejected', 'executed', 'congressional_notification'],
+  }).notNull().default('draft'),
+  congressionalNotificationRequired: integer('congressional_notification_required', { mode: 'boolean' }).notNull().default(false),
+  approvedBy: text('approved_by'),
+  approvedAt: text('approved_at'),
+  executedAt: text('executed_at'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+// --- Rule Version History ---
+
+export const ruleVersions = sqliteTable('rule_versions', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id').notNull(),
+  version: integer('version').notNull(),
+  contentJson: text('content_json').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+  sunsetDate: text('sunset_date'),
+  changedBy: text('changed_by').notNull(),
+  changeReason: text('change_reason').notNull(),
+  legislationId: text('legislation_id'),
+  createdAt: text('created_at').notNull(),
+});
+
+// --- Approval Workflow ---
+
+export const approvalChains = sqliteTable('approval_chains', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  entityType: text('entity_type', {
+    enum: ['disbursement', 'ada_violation', 'reprogramming', 'debt_writeoff', 'report', 'obligation'],
+  }).notNull(),
+  entityId: text('entity_id').notNull(),
+  currentStepIndex: integer('current_step_index').notNull().default(0),
+  overallStatus: text('overall_status', {
+    enum: ['pending', 'approved', 'rejected', 'escalated', 'expired'],
+  }).notNull().default('pending'),
+  initiatedBy: text('initiated_by').notNull(),
+  initiatedAt: text('initiated_at').notNull(),
+  completedAt: text('completed_at'),
+});
+
+export const approvalSteps = sqliteTable('approval_steps', {
+  id: text('id').primaryKey(),
+  chainId: text('chain_id').notNull().references(() => approvalChains.id),
+  stepIndex: integer('step_index').notNull(),
+  requiredRole: text('required_role').notNull(),
+  assignedTo: text('assigned_to'),
+  status: text('status', {
+    enum: ['pending', 'approved', 'rejected', 'escalated', 'expired'],
+  }).notNull().default('pending'),
+  decision: text('decision', { enum: ['approve', 'reject'] }),
+  comment: text('comment'),
+  decidedAt: text('decided_at'),
+  dueDate: text('due_date'),
 });
