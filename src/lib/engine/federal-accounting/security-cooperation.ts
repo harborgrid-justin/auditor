@@ -1480,7 +1480,7 @@ export function generateSecurityAssistanceReport(
   const outstandingBalance = round2(totalCaseValue - totalCollections);
 
   // Determine country for single-country reports; use 'Multiple' for portfolio
-  const countries = [...new Set(cases.map((c) => c.country))];
+  const countries = Array.from(new Set(cases.map((c) => c.country)));
   const country = countries.length === 1 ? countries[0] : 'Multiple';
 
   return {

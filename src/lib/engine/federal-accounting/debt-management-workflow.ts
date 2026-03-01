@@ -749,15 +749,7 @@ export function generateDebtAgingReport(
   debts: DebtRecord[],
   asOfDate: string
 ): DebtAgingReport {
-  const aging: DebtAging = {
-    current: 0,
-    days1to30: 0,
-    days31to60: 0,
-    days61to90: 0,
-    days91to120: 0,
-    over120Days: 0,
-    totalDelinquent: 0,
-  };
+  const aging: DebtAging = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days91to120: 0, over120Days: 0, totalDelinquent: 0 };
 
   const byCategory: Record<string, DebtAging & { count: number }> = {};
 
@@ -782,18 +774,8 @@ export function generateDebtAgingReport(
     if (debt.referredToTreasury) referredCount++;
     if (debt.enrolledInTOP) topCount++;
 
-    // Initialize category bucket if needed
     if (!byCategory[debt.category]) {
-      byCategory[debt.category] = {
-        current: 0,
-        days1to30: 0,
-        days31to60: 0,
-        days61to90: 0,
-        days91to120: 0,
-        over120Days: 0,
-        totalDelinquent: 0,
-        count: 0,
-      };
+      byCategory[debt.category] = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days91to120: 0, over120Days: 0, totalDelinquent: 0, count: 0 };
     }
 
     const catBucket = byCategory[debt.category];
