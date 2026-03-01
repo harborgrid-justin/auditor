@@ -17,9 +17,10 @@
 import type { TaxParameter, TaxParameterDefinition } from '@/types/tax-compliance';
 import { FEDERAL_PARAMETERS, PARAMETER_DEFINITIONS } from './federal-parameters';
 import { GAAP_PARAMETERS } from './gaap-parameters';
+import { DOD_PARAMETERS, DOD_PARAMETER_DEFINITIONS } from './dod-parameters';
 
 // Combine all built-in parameters
-const ALL_PARAMETERS: TaxParameter[] = [...FEDERAL_PARAMETERS, ...GAAP_PARAMETERS];
+const ALL_PARAMETERS: TaxParameter[] = [...FEDERAL_PARAMETERS, ...GAAP_PARAMETERS, ...DOD_PARAMETERS];
 
 // Build index: code -> taxYear -> parameters[]
 const parameterIndex = new Map<string, Map<number, TaxParameter[]>>();
@@ -135,14 +136,14 @@ export function isParameterSunset(code: string, taxYear: number): boolean {
  * Get all parameter definitions (metadata).
  */
 export function getParameterDefinitions(): TaxParameterDefinition[] {
-  return PARAMETER_DEFINITIONS;
+  return [...PARAMETER_DEFINITIONS, ...DOD_PARAMETER_DEFINITIONS];
 }
 
 /**
  * Get parameter definitions filtered by category.
  */
 export function getParameterDefinitionsByCategory(category: string): TaxParameterDefinition[] {
-  return PARAMETER_DEFINITIONS.filter(d => d.category === category);
+  return [...PARAMETER_DEFINITIONS, ...DOD_PARAMETER_DEFINITIONS].filter(d => d.category === category);
 }
 
 // --- Internal helpers ---

@@ -20,7 +20,7 @@ export interface Engagement {
   createdBy: string;
   createdAt: string;
   industry?: string;
-  entityType?: 'c_corp' | 's_corp' | 'partnership' | 'llc' | 'nonprofit';
+  entityType?: 'c_corp' | 's_corp' | 'partnership' | 'llc' | 'nonprofit' | 'dod_component' | 'defense_agency' | 'combatant_command' | 'working_capital_fund' | 'naf_entity';
 }
 
 export interface EngagementMember {

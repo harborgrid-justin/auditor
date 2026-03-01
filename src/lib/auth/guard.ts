@@ -11,6 +11,33 @@ export interface AuthUser {
   role: string;
 }
 
+/** DoD-specific roles for fund control and disbursing operations */
+export const DOD_ROLES = {
+  FINANCIAL_MANAGER: 'financial_manager',
+  CERTIFYING_OFFICER: 'certifying_officer',
+  FUND_CONTROL_OFFICER: 'fund_control_officer',
+  DISBURSING_OFFICER: 'disbursing_officer',
+  ADA_INVESTIGATOR: 'ada_investigator',
+} as const;
+
+/** Require one of the DoD-specific roles (in addition to base auth) */
+export async function requireDoDRole(
+  allowedDoDRoles: string[]
+): Promise<AuthResult> {
+  const auth = await requireAuth();
+  if (auth.error) return auth;
+  if (auth.user.role === 'admin') return auth;
+  if (!allowedDoDRoles.includes(auth.user.role)) {
+    return {
+      error: NextResponse.json(
+        { error: 'Insufficient DoD permissions. Required: ' + allowedDoDRoles.join(', ') },
+        { status: 403 }
+      ),
+    };
+  }
+  return auth;
+}
+
 export type AuthResult =
   | { user: AuthUser; error?: never }
   | { user?: never; error: NextResponse };

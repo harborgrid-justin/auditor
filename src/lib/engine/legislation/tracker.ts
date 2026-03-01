@@ -19,13 +19,14 @@ import type {
   AlertSeverity,
 } from '@/types/tax-compliance';
 import { SEED_LEGISLATION, SEED_RULE_LINKS } from './seed-legislation';
+import { SEED_DOD_LEGISLATION, SEED_DOD_RULE_LINKS } from './seed-dod-legislation';
 
 // ---------------------------------------------------------------------------
 // Internal state — seeded on module load, extensible at runtime
 // ---------------------------------------------------------------------------
 
-const legislationRecords: Legislation[] = [...SEED_LEGISLATION];
-const ruleLinkRecords: LegislationRuleLink[] = [...SEED_RULE_LINKS];
+const legislationRecords: Legislation[] = [...SEED_LEGISLATION, ...SEED_DOD_LEGISLATION];
+const ruleLinkRecords: LegislationRuleLink[] = [...SEED_RULE_LINKS, ...SEED_DOD_RULE_LINKS];
 
 // Indexes for fast lookups
 const legislationById = new Map<string, Legislation>();
