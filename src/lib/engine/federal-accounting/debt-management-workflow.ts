@@ -1,915 +1,608 @@
 /**
- * Debt Management Workflow Engine -- Volume 16
+ * Volume 16 Debt Management Workflow Engine
  *
- * Implements the federal debt collection lifecycle for DoD agencies per
- * DoD FMR Volume 16 (Debt Management), the Debt Collection Improvement
- * Act of 1996 (DCIA), and the Federal Claims Collection Standards
- * (31 CFR Parts 900-904).
+ * Full lifecycle of federal debt management for DoD components: demand
+ * letters, Treasury referral, TOP enrollment, salary offset, compromise,
+ * waiver, write-off, charge accrual, aging, and due diligence.
  *
- * References:
- *   - DoD FMR Vol. 16 (Debt Management)
- *   - 31 U.S.C. Section 3711 (Collection and Compromise of Claims)
- *   - 31 U.S.C. Section 3716 (Administrative Offset)
- *   - 31 U.S.C. Section 3717 (Interest and Penalty on Claims)
- *   - 31 CFR Part 901 (Administrative Collection of Claims)
- *   - 31 CFR Part 902 (Compromise of Claims)
- *   - 5 U.S.C. Section 5514 (Installment Deduction for Indebtedness)
- *   - DCIA (Debt Collection Improvement Act of 1996)
+ * References: 31 U.S.C. §§3711, 3716, 3717; 31 CFR 901-903;
+ * 5 U.S.C. §§5514, 5584; 10 U.S.C. §2774; DoD FMR Vol. 16; OMB A-129.
  */
 
-import type { DebtRecord, DebtAging, DebtCategory } from '@/types/dod-fmr';
-import { getParameter } from '@/lib/engine/tax-parameters/registry';
+import type { DebtRecord, DebtAging } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ── Types ───────────────────────────────────────────────────────────────────
 
-export type DemandLetterType = 'initial' | '30_day' | '60_day' | '90_day';
+export type DemandLetterType = 'initial' | '30_day' | '60_day' | '90_day' | 'final';
 
+/** Demand letter per 31 CFR 901.2 progressive demand sequence. */
 export interface DemandLetter {
   id: string;
   debtId: string;
-  letterType: DemandLetterType;
-  sequenceNumber: number;
+  type: DemandLetterType;
   generatedDate: string;
-  responseDeadline: string;
-  debtorInfo: {
-    name: string;
-    debtorId?: string;
-  };
-  amount: number;
-  interestAccrued: number;
-  penaltyAmount: number;
-  adminFees: number;
-  totalAmountDue: number;
-  rightsNotification: string[];
-  authority: string;
-}
-
-export interface DebtAccrual {
-  debtId: string;
-  asOfDate: string;
-  principalBalance: number;
-  interestAccrued: number;
-  interestRate: number;
-  penaltyAmount: number;
-  penaltyRate: number;
-  adminFees: number;
-  totalAmountDue: number;
-  daysDelinquent: number;
-  fiscalYear: number;
-}
-
-export interface TOPEnrollment {
-  id: string;
-  debtId: string;
-  eligible: boolean;
-  enrollmentDate?: string;
-  reasons: string[];
-  debtAmount: number;
-  minimumThreshold: number;
-  daysDelinquent: number;
-  legallyEnforceable: boolean;
-  authority: string;
-}
-
-export interface TreasuryReferral {
-  id: string;
-  debtId: string;
-  referralDate: string;
-  dciaDeadline: string;
-  daysUntilDeadline: number;
-  isPastDeadline: boolean;
-  debtAmount: number;
+  dueDate: string;
   debtorName: string;
-  debtCategory: DebtCategory;
-  dueDiligenceComplete: boolean;
-  demandLettersSent: number;
-  referralPackage: {
-    debtorInformation: boolean;
-    debtBasis: boolean;
-    paymentHistory: boolean;
-    collectionActions: boolean;
-    supportingDocuments: boolean;
-  };
-  authority: string;
+  amount: number;
+  content: string;
 }
 
-export interface SalaryOffsetPlan {
-  id: string;
+export interface DemandLetterResult {
+  letter: DemandLetter;
+  nextLetterType: DemandLetterType | null;
+  nextLetterDueDate: string | null;
+}
+
+export interface TOPEnrollmentResult {
+  eligible: boolean;
+  enrolled: boolean;
+  reason: string;
   debtId: string;
-  employeeId: string;
-  employeeName: string;
-  debtAmount: number;
-  disposablePay: number;
-  maxOffsetPercentage: number;
-  offsetAmountPerPeriod: number;
-  payPeriods: number;
-  estimatedCompletionDate: string;
-  hearingRightsNotified: boolean;
-  hearingRequested: boolean;
-  hearingDate?: string;
-  voluntaryRepayment: boolean;
-  initiatedDate: string;
-  authority: string;
+  amount: number;
 }
 
-export interface CompromiseEvaluation {
-  id: string;
+export interface TreasuryReferralResult {
+  referred: boolean;
+  reason: string;
+  debtId: string;
+  referralDate: string | null;
+  delinquentDays: number;
+}
+
+export interface SalaryOffsetResult {
+  eligible: boolean;
+  initiated: boolean;
+  reason: string;
+  debtId: string;
+  offsetAmount: number;
+  maxPerPayPeriodPct: number;
+}
+
+export interface CompromiseResult {
+  approved: boolean;
+  reason: string;
   debtId: string;
   originalAmount: number;
-  totalAmountDue: number;
-  offeredAmount: number;
-  compromisePercentage: number;
-  withinAgencyLimit: boolean;
-  agencyDelegationLimit: number;
-  requiresTreasuryApproval: boolean;
-  recommendation: 'approve' | 'reject' | 'refer_to_treasury';
-  reasons: string[];
-  authority: string;
+  compromiseAmount: number;
+  requiresDOJReferral: boolean;
+  approvalLevel: string;
+}
+
+export interface WaiverResult {
+  approved: boolean;
+  reason: string;
+  debtId: string;
+  amount: number;
+  waiverAuthority: string;
+  requiresHigherAuth: boolean;
 }
 
 export interface WriteOffResult {
-  id: string;
+  approved: boolean;
+  reason: string;
   debtId: string;
   amount: number;
-  reason: string;
-  approvalRequired: string;
   approvalLevel: string;
-  writeOffDate: string;
-  fiscalYear: number;
-  authority: string;
+  dueDiligenceComplete: boolean;
 }
 
-export interface DebtAgingReport {
-  asOfDate: string;
-  totalDebts: number;
-  totalAmount: number;
-  aging: DebtAging;
-  byCategory: Record<string, DebtAging & { count: number }>;
-  summary: {
-    averageAge: number;
-    oldestDebtDays: number;
-    percentDelinquent: number;
-    percentReferred: number;
-    percentEnrolledTOP: number;
-  };
-}
-
-export interface DueDiligenceChecklist {
-  id: string;
+export interface DebtChargesResult {
   debtId: string;
-  generatedDate: string;
-  debtEstablished: boolean;
-  initialDemandLetterSent: boolean;
-  secondDemandLetterSent: boolean;
-  thirdDemandLetterSent: boolean;
-  rightsNotificationProvided: boolean;
-  interestPenaltyAssessed: boolean;
-  skipTracingComplete: boolean;
-  offsetApplied: boolean;
-  topEnrollmentConsidered: boolean;
-  crossServicingReferred: boolean;
-  compromiseConsidered: boolean;
-  writeOffConsidered: boolean;
-  salaryOffsetConsidered: boolean;
-  allStepsComplete: boolean;
-  missingSteps: string[];
-  authority: string;
+  daysDelinquent: number;
+  interestAccrued: number;
+  penaltyAccrued: number;
+  adminFeeAccrued: number;
+  totalCharges: number;
+  totalAmountDue: number;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+export interface DueDiligenceItem {
+  requirement: string;
+  completed: boolean;
+  citation: string;
+}
 
-/** Days added for each demand letter response deadline */
-const DEMAND_LETTER_RESPONSE_DAYS = 30;
+export interface DueDiligenceResult {
+  debtId: string;
+  complete: boolean;
+  items: DueDiligenceItem[];
+  missingItems: string[];
+}
 
-/** Sequence mapping for demand letter types */
-const LETTER_SEQUENCE: Record<DemandLetterType, number> = {
-  initial: 1,
-  '30_day': 2,
-  '60_day': 3,
-  '90_day': 4,
-};
+// ── Internal Helpers ────────────────────────────────────────────────────────
 
-/** Standard debtor rights notifications per 31 CFR 901.2. */
-const DEBTOR_RIGHTS: string[] = [
-  'The basis for the debt and amount owed, including interest, penalties, and administrative costs.',
-  'The right to inspect and copy agency records pertaining to the debt.',
-  'The right to request review of the agency determination of the debt.',
-  'The right to enter into a written repayment agreement.',
-  'The right to request a waiver (if applicable by statute).',
-  'The right to a hearing before salary offset (5 U.S.C. Section 5514).',
-  'That the debt may be referred to TOP for offset against federal payments.',
-  'That the debt may be referred to Treasury for cross-servicing.',
-  'That the debt may be reported to credit bureaus if not resolved.',
-  'The deadline for responding to this notice.',
-];
+const MS_PER_DAY = 86_400_000;
+const RESOLVED: DebtRecord['status'][] = ['collected', 'waived', 'written_off'];
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function daysBetween(a: Date, b: Date): number {
+  return Math.floor((b.getTime() - a.getTime()) / MS_PER_DAY);
+}
 
-/** Round a number to 2 decimal places. */
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function fmt(amount: number): string {
+  return '$' + amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function delinqDays(debt: DebtRecord, asOf: Date = new Date()): number {
+  if (!debt.delinquentDate) return 0;
+  return Math.max(0, daysBetween(new Date(debt.delinquentDate), asOf));
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Add calendar days to a date string (YYYY-MM-DD), return YYYY-MM-DD. */
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+function isResolved(debt: DebtRecord): boolean {
+  return RESOLVED.includes(debt.status);
 }
 
-/** Calculate the number of whole days between two date strings. */
-function daysBetween(fromStr: string, toStr: string): number {
-  const from = new Date(fromStr);
-  const to = new Date(toStr);
-  return Math.floor((to.getTime() - from.getTime()) / 86_400_000);
+function getApprovalLevel(amount: number, threshold: number): string {
+  if (amount <= 10_000) return 'debt_management_officer';
+  if (amount <= threshold) return 'component_head';
+  return 'agency_head_or_cfo';
 }
 
-/** Derive fiscal year from a date string. Federal FY starts October 1. */
-function fiscalYearFromDate(dateStr: string): number {
-  const d = new Date(dateStr);
-  return d.getMonth() >= 9 ? d.getFullYear() + 1 : d.getFullYear();
-}
+// ── 1. Demand Letter Generation (31 CFR 901.2) ─────────────────────────────
 
-/** Today as YYYY-MM-DD. */
-function today(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
-// ---------------------------------------------------------------------------
-// 1. Demand Letter Generation (31 CFR 901.2)
-// ---------------------------------------------------------------------------
+const LETTER_SEQ: DemandLetterType[] = [
+  'initial', '30_day', '60_day', '90_day', 'final',
+];
 
 /**
- * Generate a demand letter for a debt per 31 CFR 901.2.
+ * Generates the next demand letter in the progressive sequence per
+ * 31 CFR 901.2. Each letter informs the debtor of the debt basis,
+ * amount, rights to inspect records and request review, applicable
+ * charges, payment deadline, and intent to refer to Treasury.
  *
- * Agencies must make written demand for payment informing the debtor
- * of the basis/amount of the debt, their rights, and consequences of
- * non-payment. Letters are sent in sequence: initial, 30-day, 60-day,
- * and 90-day follow-ups per DoD FMR Vol. 16, Ch. 4.
- *
- * @param debt - The debt record
- * @param letterType - Type/stage of the demand letter
+ * @param debt - The delinquent debt record
+ * @param fiscalYear - Current fiscal year for parameter lookups
+ * @returns Generated letter with scheduling metadata, or null if all sent
  */
 export function generateDemandLetter(
   debt: DebtRecord,
-  letterType: DemandLetterType
-): DemandLetter {
-  const generatedDate = today();
-  const responseDeadline = addDays(generatedDate, DEMAND_LETTER_RESPONSE_DAYS);
+  fiscalYear: number,
+): DemandLetterResult | null {
+  if (debt.demandLettersSent >= LETTER_SEQ.length) return null;
 
-  const interestAccrued = debt.interestAssessed;
-  const penaltyAmount = debt.penaltyAssessed;
-  const adminFees = debt.adminFeeAssessed;
-  const totalAmountDue = round2(
-    debt.amount + interestAccrued + penaltyAmount + adminFees - debt.paymentsReceived
-  );
+  const letterType = LETTER_SEQ[debt.demandLettersSent];
+  const now = new Date();
+  const dueDays = letterType === 'final' ? 15 : 30;
+  const dueDate = addDays(now, dueDays);
+  const adminFee = getParameter('DOD_DEBT_ADMIN_FEE', fiscalYear, undefined, 55);
+  const rate = getParameter('DOD_DEBT_INTEREST_RATE', fiscalYear, undefined, 1.0);
+  const fmtDue = dueDate.toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+
+  const header = letterType === 'initial'
+    ? 'INITIAL NOTICE OF DEBT'
+    : letterType === 'final'
+      ? 'FINAL NOTICE BEFORE ENFORCED COLLECTION'
+      : 'DEMAND FOR PAYMENT - ' + letterType.replace('_', '-').toUpperCase() + ' FOLLOW-UP';
+
+  const urgency = letterType === 'final'
+    ? 'This is your FINAL NOTICE. Failure to respond will result in referral to the U.S. Department of the Treasury for enforced collection, administrative offset, and credit bureau reporting.'
+    : 'If unpaid by ' + fmtDue + ', interest at ' + rate + '% p.a., penalty up to 6% p.a. on amounts >90 days past due, and ' + fmt(adminFee) + ' admin fee per demand will accrue per 31 U.S.C. §3717.';
+
+  const content = [
+    header, '',
+    'Dear ' + debt.debtorName + ',', '',
+    'You owe a debt to the United States Government: ' + fmt(debt.totalAmountDue) + '.', '',
+    'Original Amount:     ' + fmt(debt.originalAmount),
+    'Interest Assessed:   ' + fmt(debt.interestAssessed),
+    'Penalties Assessed:  ' + fmt(debt.penaltyAssessed),
+    'Admin Fees Assessed: ' + fmt(debt.adminFeeAssessed),
+    'Payments Received:   ' + fmt(debt.paymentsReceived),
+    'Total Amount Due:    ' + fmt(debt.totalAmountDue),
+    'Payment Due Date:    ' + fmtDue, '',
+    urgency, '',
+    'YOUR RIGHTS (per 31 CFR 901.2):',
+    '  1. Inspect and copy agency records related to this debt.',
+    '  2. Request a review of the determination of the debt.',
+    '  3. Propose a voluntary repayment agreement.',
+    '  4. Request a waiver, if applicable under statute.', '',
+    'Debt Management Office',
+  ].join('\n');
+
+  const nextIdx = debt.demandLettersSent + 1;
+  const nextType = nextIdx < LETTER_SEQ.length ? LETTER_SEQ[nextIdx] : null;
 
   return {
-    id: uuid(),
-    debtId: debt.id,
-    letterType,
-    sequenceNumber: LETTER_SEQUENCE[letterType],
-    generatedDate,
-    responseDeadline,
-    debtorInfo: {
-      name: debt.debtorName,
-      debtorId: debt.debtorId,
+    letter: {
+      id: uuid(),
+      debtId: debt.id,
+      type: letterType,
+      generatedDate: now.toISOString(),
+      dueDate: dueDate.toISOString(),
+      debtorName: debt.debtorName,
+      amount: debt.totalAmountDue,
+      content,
     },
-    amount: debt.amount,
-    interestAccrued: round2(interestAccrued),
-    penaltyAmount: round2(penaltyAmount),
-    adminFees: round2(adminFees),
-    totalAmountDue: round2(Math.max(totalAmountDue, 0)),
-    rightsNotification: [...DEBTOR_RIGHTS],
-    authority: '31 CFR 901.2; DoD FMR Vol. 16, Ch. 4',
+    nextLetterType: nextType,
+    nextLetterDueDate: nextType ? addDays(now, dueDays + 30).toISOString() : null,
   };
 }
 
-// ---------------------------------------------------------------------------
-// 2. Interest / Penalty / Admin Fee Accrual (31 U.S.C. Section 3717)
-// ---------------------------------------------------------------------------
+// ── 2. Treasury Offset Program Enrollment (31 U.S.C. §3716) ────────────────
 
 /**
- * Calculate accrued interest on a delinquent debt per 31 U.S.C. Section 3717(a).
- *
- * Interest accrues at the Treasury Current Value of Funds Rate
- * (DOD_DEBT_INTEREST_RATE parameter) from the delinquent date.
- * Simple interest: Principal * Rate * (Days / 365).
- *
- * @param debt - The debt record
- * @param asOfDate - Date to calculate interest through (YYYY-MM-DD)
+ * Evaluates TOP enrollment eligibility. Requires debt > threshold,
+ * delinquent > DOD_DEBT_REFERRAL_DAYS, and due process notice sent.
  */
-export function accrueInterest(debt: DebtRecord, asOfDate: string): number {
-  if (!debt.delinquentDate) return 0;
+export function enrollInTOP(debt: DebtRecord, fiscalYear: number): TOPEnrollmentResult {
+  const threshold = getParameter('DOD_DEBT_REFERRAL_THRESHOLD', fiscalYear, undefined, 25000);
+  const reqDays = getParameter('DOD_DEBT_REFERRAL_DAYS', fiscalYear, undefined, 120);
+  const days = delinqDays(debt);
+  const base = { debtId: debt.id, amount: debt.totalAmountDue };
 
-  const fy = fiscalYearFromDate(asOfDate);
-  const annualRate = getParameter('DOD_DEBT_INTEREST_RATE', fy, undefined, 0.01);
-
-  const daysDelinquent = daysBetween(debt.delinquentDate, asOfDate);
-  if (daysDelinquent <= 0) return 0;
-
-  const principal = debt.amount - debt.paymentsReceived;
-  if (principal <= 0) return 0;
-
-  // Simple interest: P * r * (days / 365)
-  const interest = principal * annualRate * (daysDelinquent / 365);
-  return round2(interest);
-}
-
-/**
- * Calculate penalty on a delinquent debt per 31 U.S.C. Section 3717(e)(2).
- *
- * 6% per annum penalty (DOD_DEBT_PENALTY_RATE) assessed on debts more
- * than 90 days past due. Penalty accrues from day 91 onward.
- *
- * @param debt - The debt record
- * @param asOfDate - Date to calculate penalty through (YYYY-MM-DD)
- */
-export function calculatePenalty(debt: DebtRecord, asOfDate: string): number {
-  if (!debt.delinquentDate) return 0;
-
-  const totalDaysDelinquent = daysBetween(debt.delinquentDate, asOfDate);
-  if (totalDaysDelinquent <= 90) return 0;
-
-  const fy = fiscalYearFromDate(asOfDate);
-  const penaltyRate = getParameter('DOD_DEBT_PENALTY_RATE', fy, undefined, 0.06);
-
-  // Penalty accrues only on days beyond the 90-day grace period
-  const penaltyDays = totalDaysDelinquent - 90;
-  const principal = debt.amount - debt.paymentsReceived;
-  if (principal <= 0) return 0;
-
-  const penalty = principal * penaltyRate * (penaltyDays / 365);
-  return round2(penalty);
-}
-
-/**
- * Calculate administrative fees per 31 U.S.C. Section 3717(e)(1).
- *
- * Flat-rate fee (DOD_DEBT_ADMIN_FEE) plus escalated fee
- * (DOD_DEBT_ADMIN_FEE_ESCALATED) after 3+ demand letters.
- *
- * @param debt - The debt record
- */
-export function calculateAdminFees(debt: DebtRecord): number {
-  const fy = debt.fiscalYear;
-  const baseFee = getParameter('DOD_DEBT_ADMIN_FEE', fy, undefined, 35);
-
-  // Escalated processing fee after multiple demand letters
-  const additionalFee = debt.demandLettersSent > 2
-    ? getParameter('DOD_DEBT_ADMIN_FEE_ESCALATED', fy, undefined, 65)
-    : 0;
-
-  return round2(baseFee + additionalFee);
-}
-
-/**
- * Produce a consolidated accrual record combining interest, penalty,
- * and admin fees per 31 U.S.C. Section 3717.
- *
- * @param debt - The debt record
- * @param asOfDate - Date to calculate accruals through (YYYY-MM-DD)
- */
-export function computeFullAccrual(debt: DebtRecord, asOfDate: string): DebtAccrual {
-  const interestAccrued = accrueInterest(debt, asOfDate);
-  const penaltyAmount = calculatePenalty(debt, asOfDate);
-  const adminFees = calculateAdminFees(debt);
-
-  const principalBalance = round2(Math.max(debt.amount - debt.paymentsReceived, 0));
-  const totalAmountDue = round2(principalBalance + interestAccrued + penaltyAmount + adminFees);
-
-  const daysDelinquent = debt.delinquentDate
-    ? Math.max(daysBetween(debt.delinquentDate, asOfDate), 0)
-    : 0;
-
-  const fy = fiscalYearFromDate(asOfDate);
+  if (debt.enrolledInTOP)
+    return { eligible: true, enrolled: true, reason: 'Already enrolled in TOP.', ...base };
+  if (isResolved(debt))
+    return { eligible: false, enrolled: false, reason: 'Status "' + debt.status + '" not eligible for TOP.', ...base };
+  if (debt.totalAmountDue < threshold)
+    return { eligible: false, enrolled: false, reason: 'Amount ' + fmt(debt.totalAmountDue) + ' below TOP threshold ' + fmt(threshold) + '.', ...base };
+  if (days < reqDays)
+    return { eligible: false, enrolled: false, reason: 'Delinquent ' + days + ' days; TOP requires ' + reqDays + '.', ...base };
+  if (debt.demandLettersSent < 1)
+    return { eligible: false, enrolled: false, reason: 'Due process notice not yet provided per 31 CFR 901.2.', ...base };
 
   return {
-    debtId: debt.id,
-    asOfDate,
-    principalBalance,
-    interestAccrued,
-    interestRate: getParameter('DOD_DEBT_INTEREST_RATE', fy, undefined, 0.01),
-    penaltyAmount,
-    penaltyRate: getParameter('DOD_DEBT_PENALTY_RATE', fy, undefined, 0.06),
-    adminFees,
-    totalAmountDue,
-    daysDelinquent,
-    fiscalYear: fy,
+    eligible: true,
+    enrolled: true,
+    reason: 'Meets all TOP criteria: ' + fmt(debt.totalAmountDue) + ' exceeds threshold, ' + days + ' days delinquent, due process provided.',
+    ...base,
   };
 }
 
-// ---------------------------------------------------------------------------
-// 3. Treasury Offset Program (TOP)
-// ---------------------------------------------------------------------------
+// ── 3. Cross-Servicing Referral to Treasury (31 U.S.C. §3711(g)) ───────────
 
 /**
- * Determine TOP eligibility and generate enrollment record.
- *
- * Per 31 U.S.C. Section 3716 and the DCIA, eligibility requires:
- * debt > 120 days delinquent, balance > DOD_DEBT_TOP_MINIMUM ($25
- * default), legally enforceable, and due process provided.
- *
- * @param debt - The debt record
+ * Evaluates mandatory Treasury referral per DCIA. Debts exceeding
+ * DOD_DEBT_REFERRAL_THRESHOLD delinquent > DOD_DEBT_REFERRAL_DAYS must
+ * be referred unless exempt (litigation, approved compromise).
  */
-export function enrollInTOP(debt: DebtRecord): TOPEnrollment {
-  const fy = debt.fiscalYear;
-  const minimumThreshold = getParameter('DOD_DEBT_TOP_MINIMUM', fy, undefined, 25);
-  const reasons: string[] = [];
-  let eligible = true;
+export function referToTreasury(debt: DebtRecord, fiscalYear: number): TreasuryReferralResult {
+  const now = new Date();
+  const threshold = getParameter('DOD_DEBT_REFERRAL_THRESHOLD', fiscalYear, undefined, 25000);
+  const reqDays = getParameter('DOD_DEBT_REFERRAL_DAYS', fiscalYear, undefined, 120);
+  const days = delinqDays(debt, now);
+  const base = { debtId: debt.id, delinquentDays: days };
 
-  // Check delinquency period: must exceed 120 days
-  const daysDelinquent = debt.delinquentDate
-    ? daysBetween(debt.delinquentDate, today())
-    : 0;
-
-  if (daysDelinquent < 120) {
-    eligible = false;
-    reasons.push(`Debt is only ${daysDelinquent} days delinquent; TOP requires > 120 days.`);
-  }
-
-  const outstandingBalance = round2(debt.totalAmountDue - debt.paymentsReceived);
-  if (outstandingBalance < minimumThreshold) {
-    eligible = false;
-    reasons.push(`Outstanding balance ($${outstandingBalance.toFixed(2)}) is below the TOP minimum threshold ($${minimumThreshold.toFixed(2)}).`);
-  }
-
-  const legallyEnforceable = debt.status !== 'waived' && debt.status !== 'written_off' && debt.status !== 'compromised';
-  if (!legallyEnforceable) {
-    eligible = false;
-    reasons.push(`Debt status "${debt.status}" indicates the debt is not legally enforceable.`);
-  }
-
-  if (debt.demandLettersSent < 1) {
-    eligible = false;
-    reasons.push('At least one demand letter must be sent before TOP enrollment.');
-  }
-
-  if (eligible) {
-    reasons.push('Debt meets all TOP eligibility requirements per 31 U.S.C. Section 3716.');
-  }
+  if (debt.referredToTreasury)
+    return { referred: true, reason: 'Already referred on ' + (debt.referredDate ?? 'unknown date') + '.', referralDate: debt.referredDate ?? null, ...base };
+  if (isResolved(debt))
+    return { referred: false, reason: 'Resolved (' + debt.status + '); referral not required.', referralDate: null, ...base };
+  if (debt.compromiseApproved)
+    return { referred: false, reason: 'Approved compromise defers Treasury referral.', referralDate: null, ...base };
+  if (debt.totalAmountDue < threshold)
+    return { referred: false, reason: 'Amount ' + fmt(debt.totalAmountDue) + ' below referral threshold ' + fmt(threshold) + '.', referralDate: null, ...base };
+  if (days < reqDays)
+    return { referred: false, reason: 'Delinquent ' + days + ' days; DCIA requires ' + reqDays + '.', referralDate: null, ...base };
 
   return {
-    id: uuid(),
-    debtId: debt.id,
-    eligible,
-    enrollmentDate: eligible ? today() : undefined,
-    reasons,
-    debtAmount: outstandingBalance,
-    minimumThreshold,
-    daysDelinquent,
-    legallyEnforceable,
-    authority: '31 U.S.C. Section 3716; DCIA; DoD FMR Vol. 16, Ch. 5',
+    referred: true,
+    reason: 'Must refer per 31 U.S.C. §3711(g): ' + days + ' days delinquent, ' + fmt(debt.totalAmountDue) + ' exceeds threshold.',
+    referralDate: now.toISOString(),
+    ...base,
   };
 }
 
-// ---------------------------------------------------------------------------
-// 4. Cross-Servicing Referral (31 U.S.C. Section 3711(g))
-// ---------------------------------------------------------------------------
+// ── 4. Salary Offset (5 U.S.C. §5514) ──────────────────────────────────────
 
 /**
- * Generate a referral package for Treasury cross-servicing per
- * 31 U.S.C. Section 3711(g). The DCIA mandates referral of non-tax
- * debts delinquent > 120 days. Package includes debtor information,
- * debt basis, payment history, and supporting documents.
- *
- * @param debt - The debt record
+ * Initiates salary offset for travel card delinquencies exceeding
+ * DOD_TRAVEL_CARD_SALARY_OFFSET_THRESHOLD. Due process notice required.
+ * Statutory cap: 15% of disposable pay per pay period.
  */
-export function referToTreasury(debt: DebtRecord): TreasuryReferral {
-  const referralDate = today();
-  const dciaDeadlineDays = 120;
+export function initiateSalaryOffset(debt: DebtRecord, fiscalYear: number): SalaryOffsetResult {
+  const threshold = getParameter('DOD_TRAVEL_CARD_SALARY_OFFSET_THRESHOLD', fiscalYear, undefined, 250);
+  const maxPct = 15;
+  const base = { debtId: debt.id, maxPerPayPeriodPct: maxPct };
 
-  const delinquentDate = debt.delinquentDate || debt.dueDate;
-  const dciaDeadline = addDays(delinquentDate, dciaDeadlineDays);
-  const daysUntilDeadline = daysBetween(referralDate, dciaDeadline);
-  const isPastDeadline = daysUntilDeadline < 0;
+  if (isResolved(debt))
+    return { eligible: false, initiated: false, reason: 'Status "' + debt.status + '"; not applicable.', offsetAmount: 0, ...base };
+  if (debt.category !== 'travel_card')
+    return { eligible: false, initiated: false, reason: 'Category "' + debt.category + '" not eligible; salary offset applies to travel_card per DoD FMR Vol. 16, Ch. 5.', offsetAmount: 0, ...base };
+  if (debt.totalAmountDue < threshold)
+    return { eligible: false, initiated: false, reason: 'Amount ' + fmt(debt.totalAmountDue) + ' below threshold ' + fmt(threshold) + '.', offsetAmount: 0, ...base };
+  if (debt.demandLettersSent < 1)
+    return { eligible: true, initiated: false, reason: 'Due process notice required before offset per 5 U.S.C. §5514(a)(2).', offsetAmount: debt.totalAmountDue, ...base };
 
   return {
-    id: uuid(),
-    debtId: debt.id,
-    referralDate,
-    dciaDeadline,
-    daysUntilDeadline,
-    isPastDeadline,
-    debtAmount: round2(debt.totalAmountDue - debt.paymentsReceived),
-    debtorName: debt.debtorName,
-    debtCategory: debt.category,
-    dueDiligenceComplete: debt.dueDiligenceComplete,
-    demandLettersSent: debt.demandLettersSent,
-    referralPackage: {
-      debtorInformation: true,
-      debtBasis: true,
-      paymentHistory: debt.paymentsReceived > 0,
-      collectionActions: debt.demandLettersSent > 0,
-      supportingDocuments: debt.dueDiligenceComplete,
-    },
-    authority: '31 U.S.C. Section 3711(g); DCIA; DoD FMR Vol. 16, Ch. 5',
+    eligible: true,
+    initiated: true,
+    reason: 'Salary offset initiated: ' + fmt(debt.totalAmountDue) + ' exceeds ' + fmt(threshold) + '. Max ' + maxPct + '% disposable pay per period.',
+    offsetAmount: debt.totalAmountDue,
+    ...base,
   };
 }
 
-/**
- * Check DCIA 120-day referral deadline status per 31 U.S.C. Section 3711(g).
- *
- * Warning levels: 'none' (>30 days), 'approaching' (15-30 days),
- * 'imminent' (0-15 days), 'past_due' (deadline passed).
- *
- * @param debt - The debt record
- */
-export function checkReferralDeadline(debt: DebtRecord): {
-  debtId: string;
-  delinquentDate: string;
-  dciaDeadline: string;
-  daysUntilDeadline: number;
-  isPastDeadline: boolean;
-  warningLevel: 'none' | 'approaching' | 'imminent' | 'past_due';
-  alreadyReferred: boolean;
-} {
-  const delinquentDate = debt.delinquentDate || debt.dueDate;
-  const dciaDeadline = addDays(delinquentDate, 120);
-  const daysUntilDeadline = daysBetween(today(), dciaDeadline);
-
-  let warningLevel: 'none' | 'approaching' | 'imminent' | 'past_due';
-  if (daysUntilDeadline < 0) {
-    warningLevel = 'past_due';
-  } else if (daysUntilDeadline <= 15) {
-    warningLevel = 'imminent';
-  } else if (daysUntilDeadline <= 30) {
-    warningLevel = 'approaching';
-  } else {
-    warningLevel = 'none';
-  }
-
-  return {
-    debtId: debt.id,
-    delinquentDate,
-    dciaDeadline,
-    daysUntilDeadline,
-    isPastDeadline: daysUntilDeadline < 0,
-    warningLevel,
-    alreadyReferred: debt.referredToTreasury,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// 5. Salary Offset Processing (5 U.S.C. Section 5514)
-// ---------------------------------------------------------------------------
+// ── 5. Compromise / Waiver / Write-Off ──────────────────────────────────────
 
 /**
- * Create a salary offset plan per 5 U.S.C. Section 5514.
- *
- * Deduction capped at 15% of disposable pay (DOD_SALARY_OFFSET_MAX_PCT).
- * Employee must receive 30-day written notice and has hearing rights.
- *
- * @param debt - The debt record
- * @param employeeInfo - Employee salary details for offset calculation
- */
-export function initiateSalaryOffset(
-  debt: DebtRecord,
-  employeeInfo: {
-    employeeId: string;
-    employeeName: string;
-    disposablePayPerPeriod: number;
-    payPeriodsPerYear: number;
-  }
-): SalaryOffsetPlan {
-  const fy = debt.fiscalYear;
-  const maxOffsetPct = getParameter('DOD_SALARY_OFFSET_MAX_PCT', fy, undefined, 0.15);
-
-  const maxOffsetPerPeriod = round2(employeeInfo.disposablePayPerPeriod * maxOffsetPct);
-  const outstandingBalance = round2(debt.totalAmountDue - debt.paymentsReceived);
-
-  // Calculate minimum pay periods needed at max offset rate
-  const payPeriods = maxOffsetPerPeriod > 0
-    ? Math.ceil(outstandingBalance / maxOffsetPerPeriod)
-    : 0;
-
-  // Estimate completion using biweekly (14 calendar day) pay periods
-  const biweeklyDays = 14;
-  const totalDays = payPeriods * biweeklyDays;
-  const estimatedCompletionDate = addDays(today(), totalDays);
-
-  return {
-    id: uuid(),
-    debtId: debt.id,
-    employeeId: employeeInfo.employeeId,
-    employeeName: employeeInfo.employeeName,
-    debtAmount: outstandingBalance,
-    disposablePay: employeeInfo.disposablePayPerPeriod,
-    maxOffsetPercentage: maxOffsetPct,
-    offsetAmountPerPeriod: maxOffsetPerPeriod,
-    payPeriods,
-    estimatedCompletionDate,
-    hearingRightsNotified: true,
-    hearingRequested: false,
-    voluntaryRepayment: false,
-    initiatedDate: today(),
-    authority: '5 U.S.C. Section 5514; DoD FMR Vol. 16, Ch. 6',
-  };
-}
-
-// ---------------------------------------------------------------------------
-// 6. Compromise / Waiver / Write-off
-// ---------------------------------------------------------------------------
-
-/**
- * Evaluate compromise eligibility per 31 U.S.C. Section 3711 / 31 CFR Part 902.
- *
- * Agency delegation limit from DOD_DEBT_COMPROMISE_AGENCY_LIMIT; amounts
- * above require Treasury approval. Recommendation thresholds: >= 65%
- * approve, 40-64% approve with justification, < 40% reject.
- *
- * @param debt - The debt record
- * @param offeredAmount - The dollar amount the debtor is offering
+ * Evaluates compromise per 31 U.S.C. §3711(a) and 31 CFR 902.
+ * Agency authority limited to DOD_DEBT_COMPROMISE_AGENCY_LIMIT; amounts
+ * above require DOJ referral. Delegation scales with amount.
  */
 export function evaluateCompromise(
   debt: DebtRecord,
-  offeredAmount: number
-): CompromiseEvaluation {
-  const fy = debt.fiscalYear;
-  const agencyLimit = getParameter(
-    'DOD_DEBT_COMPROMISE_AGENCY_LIMIT', fy, undefined, 100000
-  );
+  proposedAmount: number,
+  fiscalYear: number,
+): CompromiseResult {
+  const agencyLimit = getParameter('DOD_DEBT_COMPROMISE_AGENCY_LIMIT', fiscalYear, undefined, 100000);
+  const base = { debtId: debt.id, originalAmount: debt.totalAmountDue, compromiseAmount: proposedAmount };
 
-  const totalAmountDue = round2(debt.totalAmountDue - debt.paymentsReceived);
-  const compromisePercentage = totalAmountDue > 0
-    ? round2(offeredAmount / totalAmountDue)
+  if (proposedAmount >= debt.totalAmountDue) {
+    return {
+      approved: false,
+      reason: 'Proposed ' + fmt(proposedAmount) + ' not less than total ' + fmt(debt.totalAmountDue) + '. Compromise must reduce the debt.',
+      requiresDOJReferral: false,
+      approvalLevel: 'none',
+      ...base,
+    };
+  }
+  if (debt.totalAmountDue > agencyLimit) {
+    return {
+      approved: false,
+      reason: 'Amount ' + fmt(debt.totalAmountDue) + ' exceeds agency limit ' + fmt(agencyLimit) + '; DOJ referral required per 31 CFR 902.1(b).',
+      requiresDOJReferral: true,
+      approvalLevel: 'doj',
+      ...base,
+    };
+  }
+
+  const pct = (proposedAmount / debt.totalAmountDue) * 100;
+  const level = debt.totalAmountDue <= 10_000
+    ? 'debt_management_officer'
+    : debt.totalAmountDue <= 50_000 ? 'component_head' : 'cfo';
+
+  return {
+    approved: true,
+    reason: 'Compromise ' + fmt(proposedAmount) + ' (' + pct.toFixed(1) + '%) within agency authority. ' + level + ' approval required.',
+    requiresDOJReferral: false,
+    approvalLevel: level,
+    ...base,
+  };
+}
+
+/**
+ * Evaluates waiver per 5 U.S.C. §5584 (civilian) / 10 U.S.C. §2774
+ * (military). Requires: no fault of employee and collection against
+ * equity/good conscience. Property loss and travel card debts ineligible.
+ */
+export function evaluateWaiver(debt: DebtRecord, fiscalYear: number): WaiverResult {
+  const woThreshold = getParameter('DOD_DEBT_WRITEOFF_THRESHOLD', fiscalYear, undefined, 100000);
+  const base = { debtId: debt.id, amount: debt.totalAmountDue };
+
+  if (debt.category === 'property_loss') {
+    return {
+      approved: false,
+      reason: 'Property loss debts ineligible for waiver; adjudicated under 10 U.S.C. §2775.',
+      waiverAuthority: 'none',
+      requiresHigherAuth: false,
+      ...base,
+    };
+  }
+  if (debt.category === 'travel_card') {
+    return {
+      approved: false,
+      reason: 'Travel card debts are contractual; salary offset applies per DoD FMR Vol. 16, Ch. 5.',
+      waiverAuthority: 'none',
+      requiresHigherAuth: false,
+      ...base,
+    };
+  }
+
+  const isMil = debt.category === 'overpayment' || debt.category === 'erroneous_payment';
+  const auth = isMil ? '10 U.S.C. §2774' : '5 U.S.C. §5584';
+  const higher = debt.totalAmountDue > woThreshold;
+  const level = debt.totalAmountDue <= 5_000
+    ? 'debt_management_officer'
+    : debt.totalAmountDue <= woThreshold ? 'component_head' : 'agency_head_or_cfo';
+
+  return {
+    approved: true,
+    reason: 'Eligible under ' + auth + '. ' + level + ' approval required. Must show: (1) no fault, (2) collection against equity/good conscience.',
+    waiverAuthority: level,
+    requiresHigherAuth: higher,
+    ...base,
+  };
+}
+
+/**
+ * Evaluates write-off per 31 CFR 903.1. Requires due diligence complete
+ * and minimum 3 demand letters. Does not extinguish the debt.
+ */
+export function evaluateWriteOff(debt: DebtRecord, fiscalYear: number): WriteOffResult {
+  const woThreshold = getParameter('DOD_DEBT_WRITEOFF_THRESHOLD', fiscalYear, undefined, 100000);
+  const base = { debtId: debt.id, amount: debt.totalAmountDue };
+
+  if (!debt.dueDiligenceComplete) {
+    return {
+      approved: false,
+      reason: 'Due diligence incomplete per 31 CFR 903.1.',
+      approvalLevel: 'none',
+      dueDiligenceComplete: false,
+      ...base,
+    };
+  }
+  if (debt.demandLettersSent < 3) {
+    return {
+      approved: false,
+      reason: 'Only ' + debt.demandLettersSent + ' demand letter(s); minimum 3 required.',
+      approvalLevel: 'none',
+      dueDiligenceComplete: true,
+      ...base,
+    };
+  }
+
+  const level = getApprovalLevel(debt.totalAmountDue, woThreshold);
+  return {
+    approved: true,
+    reason: 'Write-off approved (' + level + '). ' + debt.demandLettersSent + ' letters sent, due diligence complete. Does not extinguish the debt per 31 CFR 903.',
+    approvalLevel: level,
+    dueDiligenceComplete: true,
+    ...base,
+  };
+}
+
+// ── 6. Interest / Penalty / Admin Fee Accrual (31 U.S.C. §3717) ────────────
+
+/**
+ * Calculates accrued charges on a delinquent debt:
+ *   - Interest from delinquency date at DOD_DEBT_INTEREST_RATE (annualized)
+ *   - Penalty up to 6% p.a. on portions >90 days past due
+ *   - Admin fee (DOD_DEBT_ADMIN_FEE) per demand letter
+ */
+export function accrueDebtCharges(debt: DebtRecord, fiscalYear: number): DebtChargesResult {
+  const ratePct = getParameter('DOD_DEBT_INTEREST_RATE', fiscalYear, undefined, 1.0);
+  const adminFee = getParameter('DOD_DEBT_ADMIN_FEE', fiscalYear, undefined, 55);
+  const penaltyPct = 6.0; // Statutory max per 31 U.S.C. §3717(e)
+  const days = delinqDays(debt);
+
+  if (days <= 0) {
+    return {
+      debtId: debt.id,
+      daysDelinquent: 0,
+      interestAccrued: 0,
+      penaltyAccrued: 0,
+      adminFeeAccrued: 0,
+      totalCharges: 0,
+      totalAmountDue: debt.totalAmountDue,
+    };
+  }
+
+  const principal = debt.amount - debt.paymentsReceived;
+  const interest = Math.max(0, (principal * (ratePct / 100) * days) / 365);
+  const penalty = days > 90
+    ? Math.max(0, (principal * (penaltyPct / 100) * (days - 90)) / 365)
     : 0;
-
-  const withinAgencyLimit = totalAmountDue <= agencyLimit;
-  const requiresTreasuryApproval = !withinAgencyLimit;
-
-  const reasons: string[] = [];
-  let recommendation: 'approve' | 'reject' | 'refer_to_treasury';
-
-  const pctLabel = `${(compromisePercentage * 100).toFixed(1)}%`;
-  const offerLabel = `$${offeredAmount.toFixed(2)}`;
-
-  if (requiresTreasuryApproval) {
-    recommendation = 'refer_to_treasury';
-    reasons.push(`Debt amount ($${totalAmountDue.toFixed(2)}) exceeds agency delegation limit ($${agencyLimit.toFixed(2)}); referral to Treasury required per 31 CFR 902.1.`);
-  } else if (compromisePercentage >= 0.65) {
-    recommendation = 'approve';
-    reasons.push(`Offered amount (${offerLabel}) represents ${pctLabel} of total due; within acceptable range.`);
-  } else if (compromisePercentage >= 0.40) {
-    recommendation = 'approve';
-    reasons.push(`Offered amount (${offerLabel}) represents ${pctLabel} of total due; compromise may be justified based on debtor inability to pay or litigative risks per 31 CFR 902.2.`);
-  } else {
-    recommendation = 'reject';
-    reasons.push(`Offered amount (${offerLabel}) represents only ${pctLabel} of total due; insufficient basis for compromise absent extraordinary circumstances.`);
-  }
+  const admin = adminFee * Math.max(debt.demandLettersSent, 1);
+  const totalCharges = interest + penalty + admin;
 
   return {
-    id: uuid(),
     debtId: debt.id,
-    originalAmount: debt.originalAmount,
-    totalAmountDue,
-    offeredAmount: round2(offeredAmount),
-    compromisePercentage,
-    withinAgencyLimit,
-    agencyDelegationLimit: agencyLimit,
-    requiresTreasuryApproval,
-    recommendation,
-    reasons,
-    authority: '31 U.S.C. Section 3711; 31 CFR Part 902; DoD FMR Vol. 16, Ch. 8',
+    daysDelinquent: days,
+    interestAccrued: round2(interest),
+    penaltyAccrued: round2(penalty),
+    adminFeeAccrued: round2(admin),
+    totalCharges: round2(totalCharges),
+    totalAmountDue: round2(principal + totalCharges),
   };
 }
 
+// ── 7. Debt Aging Report ────────────────────────────────────────────────────
+
 /**
- * Process write-off per DoD FMR Vol. 16 / 31 U.S.C. Section 3711(a).
- *
- * Write-off removes the receivable but does not extinguish the legal
- * debt. Approval tiers: <= TIER1 supervisor, <= TIER2 agency head,
- * above TIER2 requires Treasury referral.
- *
- * @param debt - The debt record
- * @param reason - Justification for the write-off
+ * Categorizes outstanding debts into aging buckets per DoD FMR Vol. 16
+ * and OMB A-129: current, 1-30, 31-60, 61-90, 91-120, 120+ days.
  */
-export function processWriteOff(
-  debt: DebtRecord,
-  reason: string
-): WriteOffResult {
-  const fy = debt.fiscalYear;
-  const amount = round2(debt.totalAmountDue - debt.paymentsReceived);
-
-  const tier1Limit = getParameter('DOD_DEBT_WRITEOFF_TIER1', fy, undefined, 20000);
-  const tier2Limit = getParameter('DOD_DEBT_WRITEOFF_TIER2', fy, undefined, 100000);
-
-  let approvalLevel: string;
-  let approvalRequired: string;
-
-  if (amount <= tier1Limit) {
-    approvalLevel = 'supervisor';
-    approvalRequired =
-      'Immediate supervisor per DoD FMR Vol. 16 delegation.';
-  } else if (amount <= tier2Limit) {
-    approvalLevel = 'agency_head';
-    approvalRequired =
-      'Agency head or designee per DoD FMR Vol. 16 delegation.';
-  } else {
-    approvalLevel = 'treasury';
-    approvalRequired =
-      'Referral to Treasury required per 31 U.S.C. Section 3711(a) ' +
-      'for write-off above agency delegation.';
-  }
-
-  return {
-    id: uuid(),
-    debtId: debt.id,
-    amount,
-    reason,
-    approvalRequired,
-    approvalLevel,
-    writeOffDate: today(),
-    fiscalYear: fy,
-    authority: 'DoD FMR Vol. 16, Ch. 8; 31 U.S.C. Section 3711(a)',
+export function generateDebtAgingReport(debts: DebtRecord[]): DebtAging {
+  const now = new Date();
+  const aging: DebtAging = {
+    current: 0,
+    days1to30: 0,
+    days31to60: 0,
+    days61to90: 0,
+    days91to120: 0,
+    over120Days: 0,
+    totalDelinquent: 0,
   };
-}
-
-// ---------------------------------------------------------------------------
-// 7. Debt Aging Report
-// ---------------------------------------------------------------------------
-
-/**
- * Generate debt aging report per DoD FMR Vol. 16 / OMB Circular A-129.
- *
- * Buckets: current, 1-30, 31-60, 61-90, 91-120, 120+ days delinquent.
- * Results broken out by debt category with per-category counts.
- *
- * @param debts - Array of debt records to analyze
- * @param asOfDate - Reporting date (YYYY-MM-DD)
- */
-export function generateDebtAgingReport(
-  debts: DebtRecord[],
-  asOfDate: string
-): DebtAgingReport {
-  const aging: DebtAging = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days91to120: 0, over120Days: 0, totalDelinquent: 0 };
-
-  const byCategory: Record<string, DebtAging & { count: number }> = {};
-
-  let totalAmount = 0;
-  let totalAgeDays = 0;
-  let oldestDebtDays = 0;
-  let referredCount = 0;
-  let topCount = 0;
 
   for (const debt of debts) {
-    const balance = round2(debt.totalAmountDue - debt.paymentsReceived);
-    if (balance <= 0) continue;
+    if (isResolved(debt)) continue;
+    const outstanding = debt.totalAmountDue - debt.paymentsReceived;
+    if (outstanding <= 0) continue;
 
-    totalAmount = round2(totalAmount + balance);
-
-    const daysDelinquent = debt.delinquentDate
-      ? Math.max(daysBetween(debt.delinquentDate, asOfDate), 0)
-      : 0;
-
-    totalAgeDays += daysDelinquent;
-    if (daysDelinquent > oldestDebtDays) oldestDebtDays = daysDelinquent;
-    if (debt.referredToTreasury) referredCount++;
-    if (debt.enrolledInTOP) topCount++;
-
-    if (!byCategory[debt.category]) {
-      byCategory[debt.category] = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days91to120: 0, over120Days: 0, totalDelinquent: 0, count: 0 };
+    if (!debt.delinquentDate) {
+      aging.current += outstanding;
+      continue;
     }
 
-    const catBucket = byCategory[debt.category];
-    catBucket.count++;
-
-    // Place balance into the appropriate aging bucket
-    const bucketKey: keyof DebtAging =
-      daysDelinquent === 0 ? 'current'
-      : daysDelinquent <= 30 ? 'days1to30'
-      : daysDelinquent <= 60 ? 'days31to60'
-      : daysDelinquent <= 90 ? 'days61to90'
-      : daysDelinquent <= 120 ? 'days91to120'
-      : 'over120Days';
-
-    aging[bucketKey] = round2(aging[bucketKey] + balance);
-    catBucket[bucketKey] = round2(catBucket[bucketKey] + balance);
-
-    if (daysDelinquent > 0) {
-      aging.totalDelinquent = round2(aging.totalDelinquent + balance);
-      catBucket.totalDelinquent = round2(catBucket.totalDelinquent + balance);
-    }
+    const days = delinqDays(debt, now);
+    if (days <= 0) aging.current += outstanding;
+    else if (days <= 30) aging.days1to30 += outstanding;
+    else if (days <= 60) aging.days31to60 += outstanding;
+    else if (days <= 90) aging.days61to90 += outstanding;
+    else if (days <= 120) aging.days91to120 += outstanding;
+    else aging.over120Days += outstanding;
   }
 
-  const activeDebts = debts.filter(
-    d => round2(d.totalAmountDue - d.paymentsReceived) > 0
-  );
-  const activeCount = activeDebts.length;
+  aging.totalDelinquent =
+    aging.days1to30 + aging.days31to60 + aging.days61to90 +
+    aging.days91to120 + aging.over120Days;
 
-  return {
-    asOfDate,
-    totalDebts: activeCount,
-    totalAmount,
-    aging,
-    byCategory,
-    summary: {
-      averageAge: activeCount > 0 ? Math.round(totalAgeDays / activeCount) : 0,
-      oldestDebtDays,
-      percentDelinquent: activeCount > 0
-        ? round2(
-            (activeDebts.filter(d => d.delinquentDate != null).length / activeCount) * 100
-          )
-        : 0,
-      percentReferred: activeCount > 0
-        ? round2((referredCount / activeCount) * 100)
-        : 0,
-      percentEnrolledTOP: activeCount > 0
-        ? round2((topCount / activeCount) * 100)
-        : 0,
-    },
-  };
+  const keys = Object.keys(aging) as (keyof DebtAging)[];
+  for (const k of keys) {
+    aging[k] = round2(aging[k]);
+  }
+  return aging;
 }
 
-// ---------------------------------------------------------------------------
-// 8. Due Diligence Checklist
-// ---------------------------------------------------------------------------
+// ── 8. Due Diligence Checklist (31 CFR 903.1) ──────────────────────────────
 
 /**
- * Generate due diligence checklist per 31 CFR Part 901 / DoD FMR Vol. 16.
- *
- * Auto-checks completion of all required collection steps (demand letters,
- * interest assessment, skip tracing, TOP, cross-servicing, compromise,
- * write-off, salary offset) and lists missing steps for remediation.
- *
- * @param debt - The debt record to evaluate
+ * Evaluates due diligence requirements before collection termination
+ * or write-off. Checks demand letters, skip tracing, Treasury referral,
+ * TOP enrollment, charges assessed, compromise, and salary offset.
  */
-export function generateDueDiligenceChecklist(
-  debt: DebtRecord
-): DueDiligenceChecklist {
-  const missingSteps: string[] = [];
+export function evaluateDueDiligence(debt: DebtRecord): DueDiligenceResult {
+  const items: DueDiligenceItem[] = [
+    {
+      requirement: 'Minimum 3 demand letters sent',
+      completed: debt.demandLettersSent >= 3,
+      citation: '31 CFR 901.2',
+    },
+    {
+      requirement: 'Skip tracing completed',
+      completed: debt.skipTracingComplete,
+      citation: 'DoD FMR Vol. 16, Ch. 4',
+    },
+    {
+      requirement: 'Referred to Treasury for cross-servicing',
+      completed: debt.referredToTreasury,
+      citation: '31 U.S.C. §3711(g)',
+    },
+    {
+      requirement: 'Enrolled in TOP',
+      completed: debt.enrolledInTOP,
+      citation: '31 U.S.C. §3716',
+    },
+    {
+      requirement: 'Interest/penalties/admin fees assessed',
+      completed: debt.interestAssessed > 0 || debt.penaltyAssessed > 0 || debt.adminFeeAssessed > 0,
+      citation: '31 U.S.C. §3717',
+    },
+    {
+      requirement: 'Compromise evaluation completed',
+      completed: debt.compromiseRequested || debt.totalAmountDue <= 0,
+      citation: '31 U.S.C. §3711(a); 31 CFR 902',
+    },
+    {
+      requirement: 'Salary offset considered (if applicable)',
+      completed: debt.category !== 'travel_card' || debt.status !== 'delinquent',
+      citation: '5 U.S.C. §5514',
+    },
+  ];
 
-  const debtEstablished = debt.establishedDate != null && debt.amount > 0;
-  if (!debtEstablished) missingSteps.push('Debt has not been properly established with amount and date.');
-
-  const initialDemandLetterSent = debt.demandLettersSent >= 1;
-  if (!initialDemandLetterSent) missingSteps.push('Initial demand letter has not been sent (31 CFR 901.2).');
-
-  const secondDemandLetterSent = debt.demandLettersSent >= 2;
-  if (!secondDemandLetterSent) missingSteps.push('Second demand letter (30-day follow-up) has not been sent.');
-
-  const thirdDemandLetterSent = debt.demandLettersSent >= 3;
-  if (!thirdDemandLetterSent) missingSteps.push('Third demand letter (60-day follow-up) has not been sent.');
-
-  const rightsNotificationProvided = initialDemandLetterSent;
-  if (!rightsNotificationProvided) missingSteps.push('Debtor rights notification has not been provided (31 CFR 901.2).');
-
-  const interestPenaltyAssessed = debt.interestAssessed > 0 || debt.penaltyAssessed > 0 || debt.adminFeeAssessed > 0;
-  if (!interestPenaltyAssessed) missingSteps.push('Interest, penalty, and/or admin fees have not been assessed (31 U.S.C. Section 3717).');
-
-  const skipTracingComplete = debt.skipTracingComplete;
-  if (!skipTracingComplete) missingSteps.push('Skip tracing has not been completed for debtor location.');
-
-  const offsetApplied = debt.enrolledInTOP;
-  if (!offsetApplied) missingSteps.push('Administrative offset (TOP) has not been applied or considered (31 U.S.C. Section 3716).');
-
-  const topEnrollmentConsidered = debt.enrolledInTOP || debt.demandLettersSent >= 1;
-  if (!topEnrollmentConsidered) missingSteps.push('TOP enrollment eligibility has not been evaluated.');
-
-  const crossServicingReferred = debt.referredToTreasury;
-  if (!crossServicingReferred) missingSteps.push('Debt has not been referred to Treasury for cross-servicing (31 U.S.C. Section 3711(g)).');
-
-  const compromiseConsidered = debt.compromiseRequested || debt.compromiseApproved;
-  if (!compromiseConsidered) missingSteps.push('Compromise has not been considered (31 CFR Part 902).');
-
-  const writeOffConsidered = debt.writeOffRequested || debt.writeOffApproved;
-  if (!writeOffConsidered) missingSteps.push('Write-off has not been considered.');
-
-  // Salary offset applicable only to employee debt categories
-  const salaryOffsetConsidered =
-    debt.category === 'overpayment' || debt.category === 'advance'
-      ? debt.demandLettersSent >= 1
-      : true;
-  if (!salaryOffsetConsidered) missingSteps.push('Salary offset has not been considered for employee debt (5 U.S.C. Section 5514).');
-
-  const allStepsComplete = missingSteps.length === 0;
+  const missingItems = items
+    .filter((i) => !i.completed)
+    .map((i) => i.requirement);
 
   return {
-    id: uuid(),
     debtId: debt.id,
-    generatedDate: today(),
-    debtEstablished,
-    initialDemandLetterSent,
-    secondDemandLetterSent,
-    thirdDemandLetterSent,
-    rightsNotificationProvided,
-    interestPenaltyAssessed,
-    skipTracingComplete,
-    offsetApplied,
-    topEnrollmentConsidered,
-    crossServicingReferred,
-    compromiseConsidered,
-    writeOffConsidered,
-    salaryOffsetConsidered,
-    allStepsComplete,
-    missingSteps,
-    authority: '31 CFR Part 901; DoD FMR Vol. 16; DCIA',
+    complete: missingItems.length === 0,
+    items,
+    missingItems,
   };
 }
