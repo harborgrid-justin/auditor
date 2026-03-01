@@ -273,6 +273,16 @@ function initializeDatabase(db: Database.Database) {
       created_at TEXT NOT NULL
     );
   `);
+
+  // Add columns that were added after initial schema creation
+  const migrateColumns = [
+    `ALTER TABLE engagements ADD COLUMN classification TEXT DEFAULT 'unclassified'`,
+    `ALTER TABLE engagements ADD COLUMN archived_at TEXT`,
+    `ALTER TABLE engagements ADD COLUMN retention_until TEXT`,
+  ];
+  for (const stmt of migrateColumns) {
+    try { db.exec(stmt); } catch { /* column already exists */ }
+  }
 }
 
 const sqliteDb = getSqlite();
