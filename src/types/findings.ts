@@ -2,7 +2,7 @@ export type Framework = 'GAAP' | 'IRS' | 'SOX' | 'PCAOB';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
-export type FindingStatus = 'open' | 'resolved' | 'accepted' | 'in_review';
+export type FindingStatus = 'open' | 'resolved' | 'accepted' | 'in_review' | 'reviewer_approved' | 'reviewer_rejected';
 
 export interface AuditFinding {
   id: string;

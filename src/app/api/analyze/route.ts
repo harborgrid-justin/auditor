@@ -10,14 +10,20 @@ import { runRules } from '@/lib/engine/rule-runner';
 import type { EngagementData } from '@/types/findings';
 import type { JournalEntry, JournalEntryLine, FinancialStatement, Account } from '@/types/financial';
 import type { SOXControl } from '@/types/sox';
+import { requireEngagementMember } from '@/lib/auth/guard';
+import { logAuditEvent } from '@/lib/audit/logger';
 
 export async function POST(req: NextRequest) {
   try {
-    const { engagementId, frameworks } = await req.json();
+    const body = await req.json();
+    const { engagementId, frameworks } = body;
 
     if (!engagementId) {
       return NextResponse.json({ error: 'engagementId required' }, { status: 400 });
     }
+
+    const auth = await requireEngagementMember(engagementId);
+    if (auth.error) return auth.error;
 
     const engagement = db.select().from(schema.engagements).where(eq(schema.engagements.id, engagementId)).get();
     if (!engagement) {
@@ -131,6 +137,16 @@ export async function POST(req: NextRequest) {
     });
 
     insertAll();
+
+    logAuditEvent({
+      userId: auth.user.id,
+      userName: auth.user.name,
+      action: 'analyze',
+      entityType: 'engagement',
+      entityId: engagementId,
+      engagementId,
+      details: { frameworks: frameworkList, totalFindings: allFindings.length },
+    });
 
     return NextResponse.json({
       success: true,

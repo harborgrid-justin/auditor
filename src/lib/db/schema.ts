@@ -103,7 +103,7 @@ export const findings = sqliteTable('findings', {
   remediation: text('remediation').notNull(),
   amountImpact: real('amount_impact'),
   affectedAccounts: text('affected_accounts'),
-  status: text('status', { enum: ['open', 'resolved', 'accepted', 'in_review'] }).notNull().default('open'),
+  status: text('status', { enum: ['open', 'resolved', 'accepted', 'in_review', 'reviewer_approved', 'reviewer_rejected'] }).notNull().default('open'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -155,4 +155,105 @@ export const uploadedFiles = sqliteTable('uploaded_files', {
   status: text('status', { enum: ['processing', 'completed', 'error'] }).notNull().default('processing'),
   uploadedAt: text('uploaded_at').notNull(),
   uploadedBy: text('uploaded_by').notNull(),
+});
+
+// --- Phase 2: Audit Trail & SOX Compliance ---
+
+export const auditLogs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id'),
+  userId: text('user_id').notNull(),
+  userName: text('user_name').notNull(),
+  action: text('action', { enum: ['create', 'read', 'update', 'delete', 'analyze', 'export', 'upload', 'login', 'logout'] }).notNull(),
+  entityType: text('entity_type', { enum: ['engagement', 'finding', 'control', 'file', 'journal_entry', 'user', 'template', 'schedule', 'signoff', 'workpaper'] }).notNull(),
+  entityId: text('entity_id'),
+  details: text('details'),
+  ipAddress: text('ip_address'),
+  timestamp: text('timestamp').notNull(),
+});
+
+export const findingHistory = sqliteTable('finding_history', {
+  id: text('id').primaryKey(),
+  findingId: text('finding_id').notNull().references(() => findings.id),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  changedBy: text('changed_by').notNull(),
+  fieldChanged: text('field_changed').notNull(),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  changedAt: text('changed_at').notNull(),
+});
+
+export const reviewComments = sqliteTable('review_comments', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  findingId: text('finding_id').notNull().references(() => findings.id),
+  userId: text('user_id').notNull(),
+  userName: text('user_name').notNull(),
+  comment: text('comment').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const workpapers = sqliteTable('workpapers', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  findingId: text('finding_id'),
+  controlId: text('control_id'),
+  fileName: text('file_name').notNull(),
+  fileType: text('file_type').notNull(),
+  fileSize: integer('file_size').notNull(),
+  uploadedBy: text('uploaded_by').notNull(),
+  uploadedAt: text('uploaded_at').notNull(),
+  description: text('description'),
+});
+
+export const signoffs = sqliteTable('signoffs', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  entityType: text('entity_type', { enum: ['finding', 'control', 'engagement'] }).notNull(),
+  entityId: text('entity_id').notNull(),
+  signedBy: text('signed_by').notNull(),
+  signerName: text('signer_name').notNull(),
+  role: text('role').notNull(),
+  opinion: text('opinion'),
+  signedAt: text('signed_at').notNull(),
+});
+
+// --- Phase 3: Workflow & Templates ---
+
+export const workflowTransitions = sqliteTable('workflow_transitions', {
+  id: text('id').primaryKey(),
+  findingId: text('finding_id').notNull().references(() => findings.id),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  fromStatus: text('from_status').notNull(),
+  toStatus: text('to_status').notNull(),
+  changedBy: text('changed_by').notNull(),
+  changerName: text('changer_name').notNull(),
+  comment: text('comment'),
+  changedAt: text('changed_at').notNull(),
+});
+
+export const engagementTemplates = sqliteTable('engagement_templates', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  entityType: text('entity_type'),
+  industry: text('industry'),
+  defaultMateriality: real('default_materiality').notNull().default(0),
+  frameworksJson: text('frameworks_json'),
+  soxControlsJson: text('sox_controls_json'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const schedules = sqliteTable('schedules', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  name: text('name').notNull(),
+  cronExpression: text('cron_expression').notNull(),
+  frameworksJson: text('frameworks_json').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  lastRunAt: text('last_run_at'),
+  nextRunAt: text('next_run_at'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
 });
