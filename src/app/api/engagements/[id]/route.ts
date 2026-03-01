@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
+import { requireEngagementMember } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const auth = await requireEngagementMember(params.id);
+    if (auth.error) return auth.error;
+
     const engagement = db.select().from(schema.engagements).where(eq(schema.engagements.id, params.id)).get();
     if (!engagement) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -16,6 +20,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const auth = await requireEngagementMember(params.id);
+    if (auth.error) return auth.error;
+
     const body = await req.json();
     const { status, materialityThreshold } = body;
 

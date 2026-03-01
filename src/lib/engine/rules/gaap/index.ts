@@ -9,6 +9,11 @@ import { financialStatementCheckRules } from './financial-statement-checks';
 import { debtEquityRules } from './debt-equity';
 import { contingencyRules } from './contingencies';
 import { stockCompensationRules } from './stock-compensation';
+import { businessCombinationsRules } from './business-combinations';
+import { consolidationRules } from './consolidation';
+import { pensionRules } from './pension';
+import { segmentReportingRules } from './segment-reporting';
+import { subsequentEventsRules } from './subsequent-events';
 
 export const gaapRules: AuditRule[] = [
   ...revenueRecognitionRules,
@@ -21,4 +26,9 @@ export const gaapRules: AuditRule[] = [
   ...debtEquityRules,
   ...contingencyRules,
   ...stockCompensationRules,
+  ...businessCombinationsRules,
+  ...consolidationRules,
+  ...pensionRules,
+  ...segmentReportingRules,
+  ...subsequentEventsRules,
 ];

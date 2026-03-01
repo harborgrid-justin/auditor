@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq, desc, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
+import { requireAuth, requireRole } from '@/lib/auth/guard';
+import { logAuditEvent } from '@/lib/audit/logger';
 
 export async function GET() {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
     const allEngagements = db.select().from(schema.engagements).orderBy(desc(schema.engagements.createdAt)).all();
 
     const engagements = allEngagements.map(eng => {
@@ -41,6 +45,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireRole(['admin', 'auditor', 'reviewer']);
+    if (auth.error) return auth.error;
+
     const body = await req.json();
     const { name, entityName, fiscalYearEnd, materialityThreshold, industry, entityType } = body;
 
@@ -60,7 +67,7 @@ export async function POST(req: NextRequest) {
       industry: industry || null,
       entityType: entityType || null,
       status: 'planning',
-      createdBy: 'system',
+      createdBy: auth.user.id,
       createdAt: now,
     }).run();
 
@@ -83,6 +90,16 @@ export async function POST(req: NextRequest) {
         automatedManual: ctrl.automatedManual,
       }).run();
     }
+
+    logAuditEvent({
+      userId: auth.user.id,
+      userName: auth.user.name,
+      action: 'create',
+      entityType: 'engagement',
+      entityId: id,
+      engagementId: id,
+      details: { name, entityName },
+    });
 
     return NextResponse.json({ id, name, entityName }, { status: 201 });
   } catch (error) {

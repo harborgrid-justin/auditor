@@ -175,6 +175,103 @@ function initializeDatabase(db: Database.Database) {
       uploaded_at TEXT NOT NULL,
       uploaded_by TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT,
+      user_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT,
+      details TEXT,
+      ip_address TEXT,
+      timestamp TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS finding_history (
+      id TEXT PRIMARY KEY,
+      finding_id TEXT NOT NULL REFERENCES findings(id),
+      engagement_id TEXT NOT NULL REFERENCES engagements(id),
+      changed_by TEXT NOT NULL,
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS review_comments (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id),
+      finding_id TEXT NOT NULL REFERENCES findings(id),
+      user_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      comment TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workpapers (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id),
+      finding_id TEXT,
+      control_id TEXT,
+      file_name TEXT NOT NULL,
+      file_type TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      uploaded_by TEXT NOT NULL,
+      uploaded_at TEXT NOT NULL,
+      description TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS signoffs (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id),
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      signed_by TEXT NOT NULL,
+      signer_name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      opinion TEXT,
+      signed_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workflow_transitions (
+      id TEXT PRIMARY KEY,
+      finding_id TEXT NOT NULL REFERENCES findings(id),
+      engagement_id TEXT NOT NULL REFERENCES engagements(id),
+      from_status TEXT NOT NULL,
+      to_status TEXT NOT NULL,
+      changed_by TEXT NOT NULL,
+      changer_name TEXT NOT NULL,
+      comment TEXT,
+      changed_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS engagement_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      entity_type TEXT,
+      industry TEXT,
+      default_materiality REAL NOT NULL DEFAULT 0,
+      frameworks_json TEXT,
+      sox_controls_json TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS schedules (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id),
+      name TEXT NOT NULL,
+      cron_expression TEXT NOT NULL,
+      frameworks_json TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_run_at TEXT,
+      next_run_at TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 }
 

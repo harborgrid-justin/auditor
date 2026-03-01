@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
+import { requireEngagementMember } from '@/lib/auth/guard';
+import { logAuditEvent } from '@/lib/audit/logger';
+import { generateAuditReport } from '@/lib/reports/pdf-generator';
+import { generateManagementLetter } from '@/lib/reports/management-letter';
+import { determineOpinion } from '@/lib/reports/audit-opinion';
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,6 +18,9 @@ export async function GET(req: NextRequest) {
     if (!engagementId) {
       return NextResponse.json({ error: 'engagementId required' }, { status: 400 });
     }
+
+    const auth = await requireEngagementMember(engagementId);
+    if (auth.error) return auth.error;
 
     const engagement = db.select().from(schema.engagements).where(eq(schema.engagements.id, engagementId)).get();
     if (!engagement) {
@@ -103,7 +111,92 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // PDF format - return structured data for client-side rendering
+    const now = new Date().toISOString();
+
+    // Management letter
+    if (type === 'management_letter') {
+      const letter = generateManagementLetter({
+        entityName: engagement.entityName,
+        engagementName: engagement.name,
+        fiscalYearEnd: engagement.fiscalYearEnd,
+        findings,
+        controls,
+        materialityThreshold: engagement.materialityThreshold,
+        generatedAt: now,
+      });
+
+      logAuditEvent({
+        userId: auth.user.id,
+        userName: auth.user.name,
+        action: 'export',
+        entityType: 'engagement',
+        entityId: engagementId,
+        engagementId,
+        details: { type: 'management_letter' },
+      });
+
+      return new NextResponse(letter, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_Management_Letter.txt"`,
+        },
+      });
+    }
+
+    // Audit opinion
+    if (type === 'audit_opinion') {
+      const opinion = determineOpinion({
+        entityName: engagement.entityName,
+        fiscalYearEnd: engagement.fiscalYearEnd,
+        findings,
+        controls,
+        materialityThreshold: engagement.materialityThreshold,
+        generatedAt: now,
+      });
+
+      logAuditEvent({
+        userId: auth.user.id,
+        userName: auth.user.name,
+        action: 'export',
+        entityType: 'engagement',
+        entityId: engagementId,
+        engagementId,
+        details: { type: 'audit_opinion', opinionType: opinion.opinionType },
+      });
+
+      return NextResponse.json(opinion);
+    }
+
+    // PDF format - full audit report as text document
+    if (format === 'pdf') {
+      const report = generateAuditReport({
+        engagement,
+        findings,
+        controls,
+        accounts,
+        generatedBy: auth.user.name,
+        generatedAt: now,
+      });
+
+      logAuditEvent({
+        userId: auth.user.id,
+        userName: auth.user.name,
+        action: 'export',
+        entityType: 'engagement',
+        entityId: engagementId,
+        engagementId,
+        details: { format: 'pdf' },
+      });
+
+      return new NextResponse(report, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${engagement.entityName.replace(/[^a-zA-Z0-9]/g, '_')}_Audit_Report.txt"`,
+        },
+      });
+    }
+
+    // Default: return JSON summary
     return NextResponse.json({
       engagement,
       findings,

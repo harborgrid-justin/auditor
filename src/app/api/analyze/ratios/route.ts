@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { calculateRatios } from '@/lib/engine/analysis/ratio-analysis';
+import { requireEngagementMember } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const engagementId = searchParams.get('engagementId');
     if (!engagementId) return NextResponse.json({ error: 'engagementId required' }, { status: 400 });
+
+    const auth = await requireEngagementMember(engagementId);
+    if (auth.error) return auth.error;
 
     const accounts = db.select().from(schema.accounts).where(eq(schema.accounts.engagementId, engagementId)).all();
     const fsRaw = db.select().from(schema.financialStatements).where(eq(schema.financialStatements.engagementId, engagementId)).all();

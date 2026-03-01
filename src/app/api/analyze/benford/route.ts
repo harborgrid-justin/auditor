@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { performBenfordAnalysis, performSecondDigitAnalysis } from '@/lib/engine/analysis/benford-analysis';
+import { requireEngagementMember } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const engagementId = searchParams.get('engagementId');
     if (!engagementId) return NextResponse.json({ error: 'engagementId required' }, { status: 400 });
+
+    const auth = await requireEngagementMember(engagementId);
+    if (auth.error) return auth.error;
 
     // Collect all monetary amounts from the engagement
     const amounts: number[] = [];

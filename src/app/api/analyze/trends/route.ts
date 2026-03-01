@@ -3,12 +3,16 @@ import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { performTrendAnalysis } from '@/lib/engine/analysis/trend-analysis';
 import type { Account } from '@/types/financial';
+import { requireEngagementMember } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const engagementId = searchParams.get('engagementId');
     if (!engagementId) return NextResponse.json({ error: 'engagementId required' }, { status: 400 });
+
+    const auth = await requireEngagementMember(engagementId);
+    if (auth.error) return auth.error;
 
     const engagement = db.select().from(schema.engagements).where(eq(schema.engagements.id, engagementId)).get();
     if (!engagement) return NextResponse.json({ error: 'Not found' }, { status: 404 });

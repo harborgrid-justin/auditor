@@ -5,8 +5,12 @@ import { v4 as uuid } from 'uuid';
 import { parseCSV } from '@/lib/parsers/csv-parser';
 import { parseExcel } from '@/lib/parsers/excel-parser';
 import { classifyAccountType } from '@/lib/utils/formatting';
+import { requireAuth, requireEngagementMember } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(req.url);
   const engagementId = searchParams.get('engagementId');
 
@@ -30,6 +34,15 @@ export async function POST(req: NextRequest) {
 
     if (!file || !engagementId || !dataType) {
       return NextResponse.json({ error: 'file, engagementId, and dataType are required' }, { status: 400 });
+    }
+
+    const auth = await requireEngagementMember(engagementId);
+    if (auth.error) return auth.error;
+
+    // File size validation (50MB limit)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File size exceeds 50MB limit' }, { status: 400 });
     }
 
     const engagement = db.select().from(schema.engagements).where(eq(schema.engagements.id, engagementId)).get();
@@ -85,7 +98,7 @@ export async function POST(req: NextRequest) {
       recordCount,
       status: 'completed',
       uploadedAt: new Date().toISOString(),
-      uploadedBy: 'user',
+      uploadedBy: auth.user.id,
     }).run();
 
     return NextResponse.json({
