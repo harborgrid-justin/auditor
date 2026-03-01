@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       .values({
         id,
         engagementId,
-        entityType: entityType as 'finding' | 'control' | 'engagement',
+        entityType: body.entityType as 'finding' | 'control' | 'engagement',
         entityId,
         signedBy: auth.user.id,
         signerName: auth.user.name,
