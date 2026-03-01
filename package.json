@@ -1,0 +1,48 @@
+{
+  "name": "auditpro",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "npx tsx seed/demo-data.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.1",
+    "lucide-react": "^0.575.0",
+    "next": "14.2.35",
+    "next-auth": "^4.24.13",
+    "papaparse": "^5.5.3",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^3.7.0",
+    "simple-statistics": "^7.8.8",
+    "tailwind-merge": "^3.5.0",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/uuid": "^10.0.0",
+    "drizzle-kit": "^0.31.9",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
