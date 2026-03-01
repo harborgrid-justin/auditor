@@ -1,5 +1,7 @@
 import type { AuditRule, AuditFinding } from '@/types/findings';
 import { createFinding } from '../../rule-runner';
+import { getParameter } from '../../tax-parameters/registry';
+import { getTaxYear } from '../../tax-parameters/utils';
 
 export const stateLocalTaxRules: AuditRule[] = [
   {
@@ -148,8 +150,11 @@ export const stateLocalTaxRules: AuditRule[] = [
         t.description.toLowerCase().includes('state and local tax deduction cap')
       );
 
-      if (totalSALT > 10000 && passThrough.length > 0 && saltCapData.length === 0) {
-        const excessOverCap = totalSALT - 10000;
+      const taxYear = getTaxYear(data.fiscalYearEnd);
+      const saltCap = getParameter('SALT_CAP', taxYear, data.entityType ?? undefined, 10000);
+
+      if (totalSALT > saltCap && saltCap !== Infinity && passThrough.length > 0 && saltCapData.length === 0) {
+        const excessOverCap = totalSALT - saltCap;
         findings.push(createFinding(
           data.engagementId,
           'IRS-SALT-003',

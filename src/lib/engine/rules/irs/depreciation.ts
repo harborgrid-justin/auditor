@@ -1,5 +1,7 @@
 import type { AuditRule, AuditFinding } from '@/types/findings';
 import { createFinding } from '../../rule-runner';
+import { getParameter } from '../../tax-parameters/registry';
+import { getTaxYear } from '../../tax-parameters/utils';
 
 export const depreciationRules: AuditRule[] = [
   {
@@ -70,8 +72,8 @@ export const depreciationRules: AuditRule[] = [
       );
 
       if (sec179 && sec179.amount > 0) {
-        // 2025 §179 limit is approximately $1,220,000 (indexed for inflation)
-        const limit = 1220000;
+        const taxYear = getTaxYear(data.fiscalYearEnd);
+        const limit = getParameter('SEC_179_LIMIT', taxYear, data.entityType ?? undefined, 1220000);
         if (sec179.amount > limit) {
           findings.push(createFinding(
             data.engagementId,

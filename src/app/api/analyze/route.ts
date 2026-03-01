@@ -9,6 +9,7 @@ import { pcaobRules } from '@/lib/engine/rules/pcaob';
 import { runRules } from '@/lib/engine/rule-runner';
 import type { EngagementData } from '@/types/findings';
 import type { JournalEntry, JournalEntryLine, FinancialStatement, Account } from '@/types/financial';
+import { getTaxYear } from '@/lib/engine/tax-parameters/utils';
 import type { SOXControl } from '@/types/sox';
 import { requireEngagementMember } from '@/lib/auth/guard';
 import { logAuditEvent } from '@/lib/audit/logger';
@@ -84,6 +85,8 @@ export async function POST(req: NextRequest) {
       soxControls,
       materialityThreshold: engagement.materialityThreshold,
       fiscalYearEnd: engagement.fiscalYearEnd,
+      taxYear: getTaxYear(engagement.fiscalYearEnd),
+      entityType: engagement.entityType ?? undefined,
     };
 
     // Clear existing findings for re-analysis

@@ -425,3 +425,65 @@ export const subsequentEvents = sqliteTable('subsequent_events', {
   identifiedAt: text('identified_at').notNull(),
   reviewedBy: text('reviewed_by'),
 });
+
+// --- Phase 5: Enterprise Tax Compliance ---
+
+export const taxParametersTable = sqliteTable('tax_parameters', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull(),
+  taxYear: integer('tax_year').notNull(),
+  value: real('value').notNull(),
+  valueType: text('value_type', { enum: ['currency', 'percentage', 'integer', 'boolean'] }).notNull(),
+  entityTypes: text('entity_types').notNull().default('all'),
+  citation: text('citation').notNull(),
+  legislationId: text('legislation_id'),
+  effectiveDate: text('effective_date'),
+  sunsetDate: text('sunset_date'),
+  notes: text('notes'),
+  updatedAt: text('updated_at').notNull(),
+  updatedBy: text('updated_by').notNull(),
+});
+
+export const legislationTable = sqliteTable('legislation', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  shortName: text('short_name').notNull(),
+  publicLaw: text('public_law'),
+  enactedDate: text('enacted_date').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+  sunsetDate: text('sunset_date'),
+  status: text('status', { enum: ['active', 'partially_sunset', 'fully_sunset', 'superseded'] }).notNull(),
+  affectedSections: text('affected_sections').notNull(),
+  summary: text('summary').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const legislationRuleLinksTable = sqliteTable('legislation_rule_links', {
+  id: text('id').primaryKey(),
+  legislationId: text('legislation_id').notNull().references(() => legislationTable.id),
+  ruleId: text('rule_id').notNull(),
+  parameterCode: text('parameter_code'),
+  impactDescription: text('impact_description').notNull(),
+});
+
+export const uncertainTaxPositions = sqliteTable('uncertain_tax_positions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  positionDescription: text('position_description').notNull(),
+  ircSection: text('irc_section').notNull(),
+  taxYear: integer('tax_year').notNull(),
+  grossAmount: real('gross_amount').notNull(),
+  recognitionThresholdMet: integer('recognition_threshold_met', { mode: 'boolean' }).notNull().default(false),
+  technicalMeritsRating: text('technical_merits_rating', { enum: ['strong', 'probable', 'more_likely_than_not', 'less_likely', 'unlikely'] }),
+  measurementAmount: real('measurement_amount'),
+  interestAccrual: real('interest_accrual').notNull().default(0),
+  penaltyAccrual: real('penalty_accrual').notNull().default(0),
+  totalReserve: real('total_reserve').notNull().default(0),
+  status: text('status', { enum: ['identified', 'analyzed', 'reserved', 'settled', 'lapsed'] }).notNull().default('identified'),
+  expirationDate: text('expiration_date'),
+  supportingDocumentation: text('supporting_documentation'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: text('reviewed_at'),
+});

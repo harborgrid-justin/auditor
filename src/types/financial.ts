@@ -8,7 +8,11 @@ export type AccountSubType =
   | 'common_stock' | 'retained_earnings' | 'aoci' | 'treasury_stock' | 'other_equity'
   | 'operating_revenue' | 'non_operating_revenue' | 'other_revenue'
   | 'cost_of_goods_sold' | 'operating_expense' | 'depreciation' | 'amortization'
-  | 'interest_expense' | 'tax_expense' | 'other_expense';
+  | 'interest_expense' | 'tax_expense' | 'other_expense'
+  | 'nol_carryforward' | 'derivative_asset' | 'derivative_liability'
+  | 'construction_in_progress' | 'treasury_stock_asset' | 'restructuring_charge'
+  | 'foreign_currency_translation' | 'hedge_instrument' | 'charitable_contribution'
+  | 'installment_receivable' | 'bonus_depreciation' | 'rd_expense';
 
 export interface Account {
   id: string;

@@ -1,5 +1,7 @@
 import type { AuditRule, AuditFinding } from '@/types/findings';
 import { createFinding } from '../../rule-runner';
+import { getParameter } from '../../tax-parameters/registry';
+import { getTaxYear } from '../../tax-parameters/utils';
 
 export const incomeTaxProvisionRules: AuditRule[] = [
   {
@@ -38,7 +40,8 @@ export const incomeTaxProvisionRules: AuditRule[] = [
 
       if (preTaxIncome > 0 && totalTaxExpense > 0) {
         const effectiveRate = totalTaxExpense / preTaxIncome;
-        const federalStatutoryRate = 0.21;
+        const taxYear = getTaxYear(data.fiscalYearEnd);
+        const federalStatutoryRate = getParameter('FEDERAL_CORP_RATE', taxYear, data.entityType ?? undefined, 0.21);
         const expectedRangeHigh = 0.30; // Allow for state taxes and permanent differences
         const expectedRangeLow = 0.15;  // Allow for credits and incentives
 

@@ -14,6 +14,13 @@ import { consolidationRules } from './consolidation';
 import { pensionRules } from './pension';
 import { segmentReportingRules } from './segment-reporting';
 import { subsequentEventsRules } from './subsequent-events';
+import { derivativesHedgingRules } from './derivatives-hedging';
+import { foreignCurrencyRules } from './foreign-currency';
+import { researchDevelopmentRules } from './research-development';
+import { interestCapitalizationRules } from './interest-capitalization';
+import { equityTransactionRules } from './equity-transactions';
+import { exitDisposalRules } from './exit-disposal';
+import { uncertainTaxPositionRules } from './uncertain-tax-positions';
 
 export const gaapRules: AuditRule[] = [
   ...revenueRecognitionRules,
@@ -31,4 +38,11 @@ export const gaapRules: AuditRule[] = [
   ...pensionRules,
   ...segmentReportingRules,
   ...subsequentEventsRules,
+  ...derivativesHedgingRules,
+  ...foreignCurrencyRules,
+  ...researchDevelopmentRules,
+  ...interestCapitalizationRules,
+  ...equityTransactionRules,
+  ...exitDisposalRules,
+  ...uncertainTaxPositionRules,
 ];

@@ -1,5 +1,7 @@
 import type { AuditRule, AuditFinding } from '@/types/findings';
 import { createFinding } from '../../rule-runner';
+import { getParameter } from '../../tax-parameters/registry';
+import { getTaxYear } from '../../tax-parameters/utils';
 
 export const deductionLimitRules: AuditRule[] = [
   {
@@ -25,7 +27,10 @@ export const deductionLimitRules: AuditRule[] = [
       );
 
       if (totalMeals > 0 && scheduleM) {
-        const expectedDisallowance = totalMeals * 0.5;
+        const taxYear = getTaxYear(data.fiscalYearEnd);
+        const mealsDeductionPct = getParameter('MEALS_DEDUCTION_PCT', taxYear, data.entityType ?? undefined, 0.50);
+        const disallowancePct = 1 - mealsDeductionPct;
+        const expectedDisallowance = totalMeals * disallowancePct;
         const actualDisallowance = scheduleM.amount;
         const diff = Math.abs(expectedDisallowance - actualDisallowance);
 
@@ -73,7 +78,9 @@ export const deductionLimitRules: AuditRule[] = [
       // ATI = taxable income + interest expense + depreciation + amortization (simplified)
       const taxableIncome = isData.incomeBeforeTax || 0;
       const ati = taxableIncome + interestExpense + depreciation + amortization;
-      const limit = ati * 0.30;
+      const taxYear = getTaxYear(data.fiscalYearEnd);
+      const atiPct = getParameter('SEC_163J_ATI_PCT', taxYear, data.entityType ?? undefined, 0.30);
+      const limit = ati * atiPct;
 
       if (interestExpense > limit) {
         const disallowed = interestExpense - limit;
