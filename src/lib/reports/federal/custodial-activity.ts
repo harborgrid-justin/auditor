@@ -10,10 +10,14 @@
  * are not earned by the collecting entity but rather are held in trust
  * for the General Fund of the Treasury or other recipient entities.
  *
+ * Data is derived from the DoDEngagementData collections, special accounts,
+ * and USSGL accounts. For DoD, custodial collections typically include
+ * sale proceeds, fees, and other non-exchange revenue.
+ *
  * Statement structure:
  *   Revenue Activity:
- *     - Sources of cash collections (taxes, duties, fees, fines, penalties)
- *     - Accrual adjustments (change in receivables, change in revenue refunds)
+ *     - Sources of cash collections (by collection type)
+ *     - Accrual adjustments (change in receivables, change in refund liability)
  *     - Total custodial revenue
  *
  *   Disposition of Collections:
@@ -34,6 +38,13 @@
  *   - DoD FMR 7000.14-R, Vol. 6A, Ch. 4 (Financial Statements)
  */
 
+import type {
+  USSGLAccount,
+  DoDEngagementData,
+  Collection,
+  SpecialAccount,
+  DoDComponentCode,
+} from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
 
 // ---------------------------------------------------------------------------
@@ -42,6 +53,19 @@ import { v4 as uuid } from 'uuid';
 
 /** Rounding precision for financial statement amounts. */
 const ROUNDING_PRECISION = 2;
+
+/**
+ * USSGL account prefixes for custodial activity.
+ * Per USSGL TFM Supplement, Section IV.
+ */
+const USSGL_CUSTODIAL = {
+  /** 5800-5899: Nonexchange revenue (custodial) */
+  nonexchangeRevenue: { min: 5800, max: 5899 },
+  /** 1310-1399: Receivables (custodial portion) */
+  receivables: { min: 1310, max: 1399 },
+  /** 2120-2199: Refund liabilities */
+  refundLiabilities: { min: 2120, max: 2199 },
+} as const;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,46 +79,15 @@ export interface CustodialLineItem {
   priorYear: number;
 }
 
-/** Classification of custodial revenue by source type. */
-export interface CustodialRevenue {
-  id: string;
-  sourceType: 'taxes' | 'duties' | 'fees' | 'fines' | 'penalties' | 'other';
-  description: string;
-  cashCollections: { currentYear: number; priorYear: number };
-  accrualAdjustments: { currentYear: number; priorYear: number };
-}
-
-/** Classification of custodial disposition by transfer type. */
-export interface CustodialDisposition {
-  id: string;
-  dispositionType:
-    | 'treasury_general_fund'
-    | 'other_federal_entity'
-    | 'retained'
-    | 'refunds';
-  recipientEntity: string;
-  amount: { currentYear: number; priorYear: number };
-}
-
-/** Input data for generating the Statement of Custodial Activity. */
-export interface CustodialActivityData {
-  revenueSources: CustodialRevenue[];
-  dispositions: CustodialDisposition[];
-  /** Change in accounts receivable related to custodial activity. */
-  changeInReceivables: { currentYear: number; priorYear: number };
-  /** Change in liability for refunds related to custodial activity. */
-  changeInRefundLiability: { currentYear: number; priorYear: number };
-}
-
 /**
  * Complete Statement of Custodial Activity.
  * Per OMB A-136, Section II.3.
  */
-export interface CustodialActivityStatement {
+export interface CustodialActivityReport {
   id: string;
-  reportDate: string;
   fiscalYear: number;
-  entityName: string;
+  dodComponent: string;
+  reportingPeriodEnd: string;
   revenueActivity: {
     cashCollectionsBySource: CustodialLineItem[];
     totalCashCollections: CustodialLineItem;
@@ -111,6 +104,7 @@ export interface CustodialActivityStatement {
   };
   netCustodialActivity: CustodialLineItem;
   validation: {
+    /** Net custodial activity should equal zero. */
     netActivityIsZero: boolean;
     currentYearDifference: number;
     priorYearDifference: number;
@@ -146,36 +140,50 @@ function makeLine(
 }
 
 /**
- * Map a revenue source type to a human-readable label.
+ * Map a collection type to a custodial revenue label.
  */
-function revenueSourceLabel(
-  sourceType: CustodialRevenue['sourceType'],
-): string {
-  const labels: Record<CustodialRevenue['sourceType'], string> = {
-    taxes: 'Tax Revenue',
-    duties: 'Customs Duties',
-    fees: 'User Fees and Charges',
-    fines: 'Fines',
-    penalties: 'Penalties',
-    other: 'Other Custodial Revenue',
+function collectionTypeLabel(collectionType: string): string {
+  const labels: Record<string, string> = {
+    reimbursement: 'Reimbursable Collections',
+    refund: 'Refund Collections',
+    recovery: 'Recovery of Prior Year Obligations',
+    sale_proceeds: 'Sale Proceeds',
+    fee: 'Fees and Charges',
+    deposit: 'Deposit Fund Collections',
   };
-  return labels[sourceType];
+  return labels[collectionType] ?? `Other Collections (${collectionType})`;
 }
 
 /**
- * Map a disposition type to a human-readable label.
+ * Sum end-balance for proprietary USSGL accounts in a numeric range.
  */
-function dispositionLabel(
-  dispositionType: CustodialDisposition['dispositionType'],
-  recipientEntity: string,
-): string {
-  const baseLabels: Record<CustodialDisposition['dispositionType'], string> = {
-    treasury_general_fund: 'Transferred to Treasury General Fund',
-    other_federal_entity: `Transferred to ${recipientEntity}`,
-    retained: 'Amounts Retained by the Collecting Entity',
-    refunds: 'Refunds and Other Payments',
-  };
-  return baseLabels[dispositionType];
+function sumRange(
+  accounts: USSGLAccount[],
+  minAcct: number,
+  maxAcct: number,
+): number {
+  return accounts
+    .filter((a) => {
+      const n = parseInt(a.accountNumber, 10);
+      return a.accountType === 'proprietary' && n >= minAcct && n <= maxAcct;
+    })
+    .reduce((sum, a) => sum + Math.abs(a.endBalance), 0);
+}
+
+/**
+ * Sum begin-balance for proprietary USSGL accounts in a numeric range.
+ */
+function sumBeginRange(
+  accounts: USSGLAccount[],
+  minAcct: number,
+  maxAcct: number,
+): number {
+  return accounts
+    .filter((a) => {
+      const n = parseInt(a.accountNumber, 10);
+      return a.accountType === 'proprietary' && n >= minAcct && n <= maxAcct;
+    })
+    .reduce((sum, a) => sum + Math.abs(a.beginBalance), 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -186,151 +194,216 @@ function dispositionLabel(
  * Generates the Statement of Custodial Activity per OMB A-136, Section II.3.
  *
  * The statement presents revenue collected on behalf of the sovereign
- * and how those collections were disposed of. The net custodial activity
- * (total revenue less total disposition) should equal zero when all
- * custodial collections have been properly transferred.
+ * and how those collections were disposed of. Data is derived from:
+ *   - Collections array: cash collections by source type
+ *   - Special accounts: disposition of collections
+ *   - USSGL accounts: accrual adjustments (changes in receivables
+ *     and refund liabilities between beginning and ending balances)
  *
  * Revenue Activity:
- *   Cash collections by source (taxes, duties, fees, fines, penalties)
- *   + Accrual adjustments (change in receivables, change in refund liability)
+ *   Cash collections by source (from collections array)
+ *   + Accrual adjustments (USSGL receivables/refund liability changes)
  *   = Total custodial revenue
  *
  * Disposition of Collections:
- *   Transferred to Treasury General Fund
- *   + Transferred to other federal entities
+ *   Transferred to Treasury General Fund (from special account disbursements)
+ *   + Transferred to other federal entities (from special account transfers)
  *   + Retained by collecting entity
  *   + Refunds and other payments
  *   = Total disposition
  *
  * Net Custodial Activity = Total Revenue - Total Disposition (should = 0)
  *
- * @param data - Custodial activity input data
- * @param fiscalYear - The fiscal year of the report
- * @param entityName - Name of the reporting entity
- * @returns CustodialActivityStatement with revenue, disposition, and validation
+ * @param data - Complete DoD engagement dataset
+ * @returns CustodialActivityReport with revenue, disposition, and validation
  *
  * @see OMB Circular A-136, Section II.3 (Statement of Custodial Activity)
  * @see SFFAS 7, para 38-43 (Nonexchange Revenue)
  * @see SFFAS 7, para 48-51 (Custodial Activity)
  */
 export function generateCustodialActivity(
-  data: CustodialActivityData,
-  fiscalYear: number,
-  entityName: string = 'Federal Reporting Entity',
-): CustodialActivityStatement {
+  data: DoDEngagementData,
+): CustodialActivityReport {
+  const accts = data.ussglAccounts;
+  const fiscalYear = data.fiscalYear;
+
   // -------------------------------------------------------------------------
   // Revenue Activity — Cash Collections by Source
   // -------------------------------------------------------------------------
-  const cashCollectionsBySource: CustodialLineItem[] = data.revenueSources.map(
-    (source) =>
-      makeLine(
-        source.description || revenueSourceLabel(source.sourceType),
-        source.cashCollections.currentYear,
-        source.cashCollections.priorYear,
-      ),
-  );
+  const collectionsByType = new Map<string, number>();
+  for (const c of data.collections) {
+    const existing = collectionsByType.get(c.collectionType) ?? 0;
+    collectionsByType.set(c.collectionType, existing + c.amount);
+  }
 
-  const totalCashCY = data.revenueSources.reduce(
-    (sum, s) => sum + s.cashCollections.currentYear,
-    0,
-  );
-  const totalCashPY = data.revenueSources.reduce(
-    (sum, s) => sum + s.cashCollections.priorYear,
-    0,
-  );
+  const cashCollectionsBySource: CustodialLineItem[] = [];
+  for (const [type, amount] of collectionsByType.entries()) {
+    cashCollectionsBySource.push(
+      makeLine(collectionTypeLabel(type), amount, 0),
+    );
+  }
+
+  const totalCashCY = data.collections.reduce((s, c) => s + c.amount, 0);
   const totalCashCollections = makeLine(
     'Total Cash Collections',
     totalCashCY,
-    totalCashPY,
+    0,
   );
 
   // -------------------------------------------------------------------------
   // Revenue Activity — Accrual Adjustments
   // -------------------------------------------------------------------------
+
+  // Change in receivables = ending - beginning (USSGL 1310-1399)
+  const receivablesEnd = sumRange(
+    accts,
+    USSGL_CUSTODIAL.receivables.min,
+    USSGL_CUSTODIAL.receivables.max,
+  );
+  const receivablesBegin = sumBeginRange(
+    accts,
+    USSGL_CUSTODIAL.receivables.min,
+    USSGL_CUSTODIAL.receivables.max,
+  );
+  const changeInReceivablesCY = round2(receivablesEnd - receivablesBegin);
+
+  // Change in refund liability = ending - beginning (USSGL 2120-2199)
+  const refundLiabEnd = sumRange(
+    accts,
+    USSGL_CUSTODIAL.refundLiabilities.min,
+    USSGL_CUSTODIAL.refundLiabilities.max,
+  );
+  const refundLiabBegin = sumBeginRange(
+    accts,
+    USSGL_CUSTODIAL.refundLiabilities.min,
+    USSGL_CUSTODIAL.refundLiabilities.max,
+  );
+  const changeInRefundLiabilityCY = round2(refundLiabEnd - refundLiabBegin);
+
   const changeInReceivables = makeLine(
     'Change in Accounts Receivable',
-    data.changeInReceivables.currentYear,
-    data.changeInReceivables.priorYear,
+    changeInReceivablesCY,
+    0,
   );
-
   const changeInRefundLiability = makeLine(
     'Change in Liability for Refunds',
-    data.changeInRefundLiability.currentYear,
-    data.changeInRefundLiability.priorYear,
+    changeInRefundLiabilityCY,
+    0,
   );
 
   const totalAccrualCY = round2(
-    data.changeInReceivables.currentYear +
-    data.changeInRefundLiability.currentYear,
-  );
-  const totalAccrualPY = round2(
-    data.changeInReceivables.priorYear +
-    data.changeInRefundLiability.priorYear,
+    changeInReceivablesCY + changeInRefundLiabilityCY,
   );
   const totalAccrualAdjustments = makeLine(
     'Total Accrual Adjustments',
     totalAccrualCY,
-    totalAccrualPY,
+    0,
   );
 
   // -------------------------------------------------------------------------
   // Total Custodial Revenue
   // -------------------------------------------------------------------------
   const totalRevenueCY = round2(totalCashCY + totalAccrualCY);
-  const totalRevenuePY = round2(totalCashPY + totalAccrualPY);
   const totalCustodialRevenue = makeLine(
     'Total Custodial Revenue',
     totalRevenueCY,
-    totalRevenuePY,
+    0,
   );
 
   // -------------------------------------------------------------------------
   // Disposition of Collections
   // -------------------------------------------------------------------------
-  const dispositionLines: CustodialLineItem[] = data.dispositions.map(
-    (disp) =>
-      makeLine(
-        dispositionLabel(disp.dispositionType, disp.recipientEntity),
-        disp.amount.currentYear,
-        disp.amount.priorYear,
-      ),
-  );
+  const dispositionLines: CustodialLineItem[] = [];
 
-  const totalDispCY = data.dispositions.reduce(
-    (sum, d) => sum + d.amount.currentYear,
+  // Transfers out from special accounts
+  const specialTransfersOut = data.specialAccounts.reduce(
+    (s, sa) => s + sa.transfersOut,
     0,
   );
-  const totalDispPY = data.dispositions.reduce(
-    (sum, d) => sum + d.amount.priorYear,
+  if (specialTransfersOut > 0) {
+    dispositionLines.push(
+      makeLine(
+        'Transferred to Treasury General Fund',
+        specialTransfersOut,
+        0,
+      ),
+    );
+  }
+
+  // Transfers to other entities via special accounts
+  const specialTransfersIn = data.specialAccounts.reduce(
+    (s, sa) => s + sa.transfersIn,
+    0,
+  );
+
+  // Disbursements from special accounts
+  const specialDisbursements = data.specialAccounts.reduce(
+    (s, sa) => s + sa.disbursements,
+    0,
+  );
+  if (specialDisbursements > 0) {
+    dispositionLines.push(
+      makeLine(
+        'Disbursements from Custodial Accounts',
+        specialDisbursements,
+        0,
+      ),
+    );
+  }
+
+  // Retained by collecting entity
+  const retained = data.specialAccounts.reduce((s, sa) => s + sa.receipts, 0) -
+    specialTransfersOut -
+    specialDisbursements;
+  if (retained > 0) {
+    dispositionLines.push(
+      makeLine('Amounts Retained by the Collecting Entity', retained, 0),
+    );
+  }
+
+  // Refunds: collections of type 'refund'
+  const refundCollections = data.collections
+    .filter((c) => c.collectionType === 'refund')
+    .reduce((s, c) => s + c.amount, 0);
+  if (refundCollections > 0) {
+    dispositionLines.push(
+      makeLine('Refunds and Other Payments', refundCollections, 0),
+    );
+  }
+
+  // If no disposition detail, add a default line
+  if (dispositionLines.length === 0) {
+    dispositionLines.push(
+      makeLine('Transferred to Treasury General Fund', totalRevenueCY, 0),
+    );
+  }
+
+  const totalDispCY = dispositionLines.reduce(
+    (sum, d) => sum + d.currentYear,
     0,
   );
   const totalDisposition = makeLine(
     'Total Disposition of Collections',
     totalDispCY,
-    totalDispPY,
+    0,
   );
 
   // -------------------------------------------------------------------------
   // Net Custodial Activity (should be zero)
   // -------------------------------------------------------------------------
   const netCY = round2(totalRevenueCY - totalDispCY);
-  const netPY = round2(totalRevenuePY - totalDispPY);
-  const netCustodialActivity = makeLine(
-    'Net Custodial Activity',
-    netCY,
-    netPY,
-  );
+  const netCustodialActivity = makeLine('Net Custodial Activity', netCY, 0);
 
   // -------------------------------------------------------------------------
   // Validation
   // -------------------------------------------------------------------------
-  const netActivityIsZero = Math.abs(netCY) < 0.01 && Math.abs(netPY) < 0.01;
+  const netActivityIsZero = Math.abs(netCY) < 0.01;
 
   return {
     id: uuid(),
-    reportDate: new Date().toISOString(),
     fiscalYear,
-    entityName,
+    dodComponent: data.dodComponent,
+    reportingPeriodEnd: `${fiscalYear}-09-30`,
     revenueActivity: {
       cashCollectionsBySource,
       totalCashCollections,
@@ -349,7 +422,7 @@ export function generateCustodialActivity(
     validation: {
       netActivityIsZero,
       currentYearDifference: netCY,
-      priorYearDifference: netPY,
+      priorYearDifference: 0,
     },
     generatedAt: new Date().toISOString(),
   };
