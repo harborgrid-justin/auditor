@@ -315,6 +315,179 @@ export const SEED_DOD_LEGISLATION: Legislation[] = [
       'publishes the applicable interest rate semi-annually. Critical for DoD disbursing ' +
       'offices and vendor payment compliance.',
   },
+  {
+    id: 'PIIA',
+    name: 'Payment Integrity Information Act of 2019',
+    shortName: 'PIIA',
+    publicLaw: 'P.L. 116-117',
+    enactedDate: '2020-03-02',
+    effectiveDate: '2020-03-02',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      '31 USC \u00A73351 \u2014 Definitions',
+      '31 USC \u00A73352 \u2014 Estimates of improper payments',
+      '31 USC \u00A73353 \u2014 Compliance requirements',
+      '31 USC \u00A73354 \u2014 Do Not Pay Initiative',
+    ],
+    summary:
+      'Consolidates and updates federal improper payment requirements (replacing IPERA/IPERIA). ' +
+      'Requires agencies to identify programs susceptible to significant improper payments, ' +
+      'estimate improper payment rates, and report corrective actions.',
+  },
+  {
+    id: 'DATA_ACT',
+    name: 'Digital Accountability and Transparency Act of 2014',
+    shortName: 'DATA Act',
+    publicLaw: 'P.L. 113-101',
+    enactedDate: '2014-05-09',
+    effectiveDate: '2017-05-09',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      'Federal spending data standardization',
+      'USASpending.gov reporting',
+      'DAIMS data elements',
+      'Agency data quality certification',
+    ],
+    summary:
+      'Requires federal agencies to report standardized spending data to USASpending.gov. ' +
+      'Establishes government-wide data standards (DAIMS) for financial and award data. ' +
+      'DoD must submit Files A-F with 57+ data elements, certified quarterly.',
+  },
+  {
+    id: 'CFO_ACT',
+    name: 'Chief Financial Officers Act of 1990',
+    shortName: 'CFO Act',
+    publicLaw: 'P.L. 101-576',
+    enactedDate: '1990-11-15',
+    effectiveDate: '1990-11-15',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      '31 USC \u00A7901 \u2014 CFO establishment',
+      '31 USC \u00A7902 \u2014 CFO authority and functions',
+      '31 USC \u00A73515 \u2014 Financial statement requirements',
+      '31 USC \u00A73521 \u2014 Audit requirements',
+    ],
+    summary:
+      'Established Chief Financial Officers at 24 major federal agencies including DoD. ' +
+      'Requires preparation of audited financial statements. Foundation of federal ' +
+      'financial management reform and the basis for DoD audit requirements.',
+  },
+  {
+    id: 'GMRA',
+    name: 'Government Management Reform Act of 1994',
+    shortName: 'GMRA',
+    publicLaw: 'P.L. 103-356',
+    enactedDate: '1994-10-13',
+    effectiveDate: '1994-10-13',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      'Agency-wide audited financial statements',
+      'Government-wide consolidated financial statements',
+      'Annual audit requirements',
+    ],
+    summary:
+      'Extended the CFO Act audit requirement to agency-wide financial statements. ' +
+      'Requires annual audits of the 24 CFO Act agencies including DoD. Established ' +
+      'the requirement for government-wide consolidated financial statements.',
+  },
+  {
+    id: 'FFMIA',
+    name: 'Federal Financial Management Improvement Act of 1996',
+    shortName: 'FFMIA',
+    publicLaw: 'P.L. 104-208',
+    enactedDate: '1996-09-30',
+    effectiveDate: '1996-09-30',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      'USSGL compliance',
+      'Federal accounting standards compliance',
+      'Financial management system requirements',
+    ],
+    summary:
+      'Requires federal agencies to implement financial management systems that comply ' +
+      'substantially with federal financial management systems requirements, applicable ' +
+      'federal accounting standards (FASAB), and the USSGL at the transaction level.',
+  },
+  {
+    id: 'DCIA',
+    name: 'Debt Collection Improvement Act of 1996',
+    shortName: 'DCIA',
+    publicLaw: 'P.L. 104-134',
+    enactedDate: '1996-04-26',
+    effectiveDate: '1996-04-26',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      '31 USC \u00A73711 \u2014 Collection and compromise',
+      '31 USC \u00A73716 \u2014 Administrative offset',
+      '31 USC \u00A73717 \u2014 Interest and penalty on claims',
+      '31 USC \u00A73720A \u2014 Treasury offset program',
+    ],
+    summary:
+      'Strengthened federal debt collection. Requires transfer of delinquent non-tax debts ' +
+      'to Treasury for collection. Mandates use of Treasury Offset Program, establishes ' +
+      'interest/penalty/admin fee requirements, and cross-servicing of debts.',
+  },
+  {
+    id: 'FISMA',
+    name: 'Federal Information Security Modernization Act of 2014',
+    shortName: 'FISMA',
+    publicLaw: 'P.L. 113-283',
+    enactedDate: '2014-12-18',
+    effectiveDate: '2014-12-18',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      'Information security program requirements',
+      'FISMA reporting',
+      'Continuous monitoring',
+    ],
+    summary:
+      'Requires federal agencies to develop, document, and implement agency-wide information ' +
+      'security programs. DoD financial systems must comply with FISMA requirements. ' +
+      'Relevant to financial system access controls and IT general controls for audit.',
+  },
+  {
+    id: 'FASAB_SFFAS33',
+    name: 'SFFAS 33: Pensions, Other Retirement Benefits, and Other Postemployment Benefits',
+    shortName: 'SFFAS 33',
+    enactedDate: '2008-10-01',
+    effectiveDate: '2008-10-01',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      'Pension liability disclosure',
+      'OPEB liability recognition',
+      'Actuarial assumptions',
+    ],
+    summary:
+      'Establishes disclosure requirements for federal pension and OPEB liabilities. ' +
+      'Requires actuarial present value calculations, sensitivity analysis of key ' +
+      'assumptions, and reconciliation of beginning and ending balances.',
+  },
+  {
+    id: 'FASAB_SFFAS48',
+    name: 'SFFAS 48: Opening Balances for Inventory and Related Property',
+    shortName: 'SFFAS 48',
+    enactedDate: '2016-10-01',
+    effectiveDate: '2016-10-01',
+    sunsetDate: undefined,
+    status: 'active',
+    affectedSections: [
+      'Inventory valuation',
+      'Operating materials and supplies',
+      'Stockpile materials',
+    ],
+    summary:
+      'Provides alternative methods for establishing opening balances of inventory, ' +
+      'operating materials and supplies, and stockpile materials. Particularly relevant ' +
+      'for DoD given the scale and complexity of military inventory.',
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -478,5 +651,84 @@ export const SEED_DOD_RULE_LINKS: LegislationRuleLink[] = [
       'Prompt Payment Act interest penalty rate is updated semi-annually by Treasury. ' +
       'DoD disbursing offices must apply the current rate when calculating interest on ' +
       'late vendor payments.',
+  },
+
+  // --- DCIA Rule Links (Debt Management) ---
+  {
+    id: 'link-dcia-debt-001',
+    legislationId: 'DCIA',
+    ruleId: 'DOD-FMR-V16-001',
+    parameterCode: 'DOD_DEBT_REFERRAL_DAYS',
+    impactDescription:
+      'DCIA requires referral of delinquent debts to Treasury for cross-servicing ' +
+      'within 120 days of delinquency. DoD components must comply with referral timelines.',
+  },
+  {
+    id: 'link-dcia-debt-003',
+    legislationId: 'DCIA',
+    ruleId: 'DOD-FMR-V16-003',
+    parameterCode: 'DOD_DEBT_REFERRAL_THRESHOLD',
+    impactDescription:
+      'DCIA mandates enrollment in Treasury Offset Program for delinquent debts ' +
+      'exceeding the referral threshold.',
+  },
+  {
+    id: 'link-dcia-debt-004',
+    legislationId: 'DCIA',
+    ruleId: 'DOD-FMR-V16-004',
+    parameterCode: 'DOD_DEBT_INTEREST_RATE',
+    impactDescription:
+      '31 U.S.C. \u00A73717 requires assessment of interest, penalties, and administrative ' +
+      'fees on delinquent debts. Rates follow Treasury current value of funds rate.',
+  },
+
+  // --- PIIA Rule Links ---
+  {
+    id: 'link-piia-payment-001',
+    legislationId: 'PIIA',
+    ruleId: 'DOD-DISB-001',
+    impactDescription:
+      'PIIA requires DoD to estimate improper payments, report corrective actions, ' +
+      'and achieve compliance. Affects all disbursing operations.',
+  },
+
+  // --- DATA Act Rule Links ---
+  {
+    id: 'link-data-act-report-001',
+    legislationId: 'DATA_ACT',
+    ruleId: 'DOD-FMR-V06-001',
+    impactDescription:
+      'DATA Act requires quarterly submission of standardized spending data to ' +
+      'USASpending.gov, affecting financial reporting processes.',
+  },
+
+  // --- FFMIA Rule Links ---
+  {
+    id: 'link-ffmia-acct-001',
+    legislationId: 'FFMIA',
+    ruleId: 'DOD-ACCT-001',
+    impactDescription:
+      'FFMIA requires DoD financial systems to comply with USSGL at the transaction ' +
+      'level and conform to FASAB standards.',
+  },
+
+  // --- SFFAS 33 Rule Links ---
+  {
+    id: 'link-sffas33-acct-007',
+    legislationId: 'FASAB_SFFAS33',
+    ruleId: 'DOD-ACCT-002',
+    impactDescription:
+      'SFFAS 33 establishes disclosure requirements for federal pension and OPEB ' +
+      'liabilities, requiring actuarial present value calculations.',
+  },
+
+  // --- SFFAS 48 Rule Links ---
+  {
+    id: 'link-sffas48-acct-008',
+    legislationId: 'FASAB_SFFAS48',
+    ruleId: 'DOD-ACCT-003',
+    impactDescription:
+      'SFFAS 48 provides methods for establishing opening balances of inventory ' +
+      'and related property, relevant to DoD property accountability.',
   },
 ];
