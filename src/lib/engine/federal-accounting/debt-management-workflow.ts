@@ -196,14 +196,14 @@ const LETTER_SEQUENCE: Record<DemandLetterType, number> = {
 
 /** Standard debtor rights notifications per 31 CFR 901.2. */
 const DEBTOR_RIGHTS: string[] = [
-  'The basis for the debt and the amount owed, including interest, penalties, and administrative costs.',
+  'The basis for the debt and amount owed, including interest, penalties, and administrative costs.',
   'The right to inspect and copy agency records pertaining to the debt.',
-  'The right to request a review of the agency determination of the debt.',
-  'The right to enter into a written agreement to repay the debt.',
-  'The right to request a waiver of the debt (if applicable by statute).',
-  'The right to a hearing before salary offset is initiated (5 U.S.C. Section 5514).',
-  'That the debt may be referred to the Treasury Offset Program (TOP) for offset against federal payments.',
-  'That the debt may be referred to Treasury for cross-servicing and collection.',
+  'The right to request review of the agency determination of the debt.',
+  'The right to enter into a written repayment agreement.',
+  'The right to request a waiver (if applicable by statute).',
+  'The right to a hearing before salary offset (5 U.S.C. Section 5514).',
+  'That the debt may be referred to TOP for offset against federal payments.',
+  'That the debt may be referred to Treasury for cross-servicing.',
   'That the debt may be reported to credit bureaus if not resolved.',
   'The deadline for responding to this notice.',
 ];
@@ -432,33 +432,21 @@ export function enrollInTOP(debt: DebtRecord): TOPEnrollment {
 
   if (daysDelinquent < 120) {
     eligible = false;
-    reasons.push(
-      `Debt is only ${daysDelinquent} days delinquent; TOP requires > 120 days.`
-    );
+    reasons.push(`Debt is only ${daysDelinquent} days delinquent; TOP requires > 120 days.`);
   }
 
-  // Check minimum dollar threshold
   const outstandingBalance = round2(debt.totalAmountDue - debt.paymentsReceived);
   if (outstandingBalance < minimumThreshold) {
     eligible = false;
-    reasons.push(
-      `Outstanding balance ($${outstandingBalance.toFixed(2)}) is below the TOP minimum threshold ($${minimumThreshold.toFixed(2)}).`
-    );
+    reasons.push(`Outstanding balance ($${outstandingBalance.toFixed(2)}) is below the TOP minimum threshold ($${minimumThreshold.toFixed(2)}).`);
   }
 
-  // Check legal enforceability
-  const legallyEnforceable =
-    debt.status !== 'waived' &&
-    debt.status !== 'written_off' &&
-    debt.status !== 'compromised';
+  const legallyEnforceable = debt.status !== 'waived' && debt.status !== 'written_off' && debt.status !== 'compromised';
   if (!legallyEnforceable) {
     eligible = false;
-    reasons.push(
-      `Debt status "${debt.status}" indicates the debt is not legally enforceable.`
-    );
+    reasons.push(`Debt status "${debt.status}" indicates the debt is not legally enforceable.`);
   }
 
-  // Check due process: at least one demand letter
   if (debt.demandLettersSent < 1) {
     eligible = false;
     reasons.push('At least one demand letter must be sent before TOP enrollment.');
@@ -660,32 +648,21 @@ export function evaluateCompromise(
   const reasons: string[] = [];
   let recommendation: 'approve' | 'reject' | 'refer_to_treasury';
 
+  const pctLabel = `${(compromisePercentage * 100).toFixed(1)}%`;
+  const offerLabel = `$${offeredAmount.toFixed(2)}`;
+
   if (requiresTreasuryApproval) {
     recommendation = 'refer_to_treasury';
-    reasons.push(
-      `Debt amount ($${totalAmountDue.toFixed(2)}) exceeds agency delegation limit ` +
-      `($${agencyLimit.toFixed(2)}); referral to Treasury required per 31 CFR 902.1.`
-    );
+    reasons.push(`Debt amount ($${totalAmountDue.toFixed(2)}) exceeds agency delegation limit ($${agencyLimit.toFixed(2)}); referral to Treasury required per 31 CFR 902.1.`);
   } else if (compromisePercentage >= 0.65) {
     recommendation = 'approve';
-    reasons.push(
-      `Offered amount ($${offeredAmount.toFixed(2)}) represents ` +
-      `${(compromisePercentage * 100).toFixed(1)}% of total due; within acceptable range.`
-    );
+    reasons.push(`Offered amount (${offerLabel}) represents ${pctLabel} of total due; within acceptable range.`);
   } else if (compromisePercentage >= 0.40) {
     recommendation = 'approve';
-    reasons.push(
-      `Offered amount ($${offeredAmount.toFixed(2)}) represents ` +
-      `${(compromisePercentage * 100).toFixed(1)}% of total due; compromise may be ` +
-      `justified based on debtor inability to pay or litigative risks per 31 CFR 902.2.`
-    );
+    reasons.push(`Offered amount (${offerLabel}) represents ${pctLabel} of total due; compromise may be justified based on debtor inability to pay or litigative risks per 31 CFR 902.2.`);
   } else {
     recommendation = 'reject';
-    reasons.push(
-      `Offered amount ($${offeredAmount.toFixed(2)}) represents only ` +
-      `${(compromisePercentage * 100).toFixed(1)}% of total due; insufficient basis ` +
-      `for compromise absent extraordinary circumstances.`
-    );
+    reasons.push(`Offered amount (${offerLabel}) represents only ${pctLabel} of total due; insufficient basis for compromise absent extraordinary circumstances.`);
   }
 
   return {
@@ -887,97 +864,48 @@ export function generateDueDiligenceChecklist(
 ): DueDiligenceChecklist {
   const missingSteps: string[] = [];
 
-  // Step 1: Debt properly established
   const debtEstablished = debt.establishedDate != null && debt.amount > 0;
-  if (!debtEstablished) {
-    missingSteps.push('Debt has not been properly established with amount and date.');
-  }
+  if (!debtEstablished) missingSteps.push('Debt has not been properly established with amount and date.');
 
-  // Step 2: Initial demand letter sent (31 CFR 901.2)
   const initialDemandLetterSent = debt.demandLettersSent >= 1;
-  if (!initialDemandLetterSent) {
-    missingSteps.push('Initial demand letter has not been sent (31 CFR 901.2).');
-  }
+  if (!initialDemandLetterSent) missingSteps.push('Initial demand letter has not been sent (31 CFR 901.2).');
 
-  // Step 3: Second demand letter (30-day follow-up)
   const secondDemandLetterSent = debt.demandLettersSent >= 2;
-  if (!secondDemandLetterSent) {
-    missingSteps.push('Second demand letter (30-day follow-up) has not been sent.');
-  }
+  if (!secondDemandLetterSent) missingSteps.push('Second demand letter (30-day follow-up) has not been sent.');
 
-  // Step 4: Third demand letter (60-day follow-up)
   const thirdDemandLetterSent = debt.demandLettersSent >= 3;
-  if (!thirdDemandLetterSent) {
-    missingSteps.push('Third demand letter (60-day follow-up) has not been sent.');
-  }
+  if (!thirdDemandLetterSent) missingSteps.push('Third demand letter (60-day follow-up) has not been sent.');
 
-  // Step 5: Debtor rights notification (implicit with demand letters)
   const rightsNotificationProvided = initialDemandLetterSent;
-  if (!rightsNotificationProvided) {
-    missingSteps.push('Debtor rights notification has not been provided (31 CFR 901.2).');
-  }
+  if (!rightsNotificationProvided) missingSteps.push('Debtor rights notification has not been provided (31 CFR 901.2).');
 
-  // Step 6: Interest, penalty, and admin fees assessed (31 U.S.C. Section 3717)
-  const interestPenaltyAssessed =
-    debt.interestAssessed > 0 ||
-    debt.penaltyAssessed > 0 ||
-    debt.adminFeeAssessed > 0;
-  if (!interestPenaltyAssessed) {
-    missingSteps.push(
-      'Interest, penalty, and/or admin fees have not been assessed (31 U.S.C. Section 3717).'
-    );
-  }
+  const interestPenaltyAssessed = debt.interestAssessed > 0 || debt.penaltyAssessed > 0 || debt.adminFeeAssessed > 0;
+  if (!interestPenaltyAssessed) missingSteps.push('Interest, penalty, and/or admin fees have not been assessed (31 U.S.C. Section 3717).');
 
-  // Step 7: Skip tracing completed
   const skipTracingComplete = debt.skipTracingComplete;
-  if (!skipTracingComplete) {
-    missingSteps.push('Skip tracing has not been completed for debtor location.');
-  }
+  if (!skipTracingComplete) missingSteps.push('Skip tracing has not been completed for debtor location.');
 
-  // Step 8: Administrative offset applied
   const offsetApplied = debt.enrolledInTOP;
-  if (!offsetApplied) {
-    missingSteps.push(
-      'Administrative offset (TOP) has not been applied or considered (31 U.S.C. Section 3716).'
-    );
-  }
+  if (!offsetApplied) missingSteps.push('Administrative offset (TOP) has not been applied or considered (31 U.S.C. Section 3716).');
 
-  // Step 9: TOP enrollment considered
   const topEnrollmentConsidered = debt.enrolledInTOP || debt.demandLettersSent >= 1;
-  if (!topEnrollmentConsidered) {
-    missingSteps.push('TOP enrollment eligibility has not been evaluated.');
-  }
+  if (!topEnrollmentConsidered) missingSteps.push('TOP enrollment eligibility has not been evaluated.');
 
-  // Step 10: Cross-servicing referral to Treasury
   const crossServicingReferred = debt.referredToTreasury;
-  if (!crossServicingReferred) {
-    missingSteps.push(
-      'Debt has not been referred to Treasury for cross-servicing (31 U.S.C. Section 3711(g)).'
-    );
-  }
+  if (!crossServicingReferred) missingSteps.push('Debt has not been referred to Treasury for cross-servicing (31 U.S.C. Section 3711(g)).');
 
-  // Step 11: Compromise considered
   const compromiseConsidered = debt.compromiseRequested || debt.compromiseApproved;
-  if (!compromiseConsidered) {
-    missingSteps.push('Compromise has not been considered (31 CFR Part 902).');
-  }
+  if (!compromiseConsidered) missingSteps.push('Compromise has not been considered (31 CFR Part 902).');
 
-  // Step 12: Write-off considered
   const writeOffConsidered = debt.writeOffRequested || debt.writeOffApproved;
-  if (!writeOffConsidered) {
-    missingSteps.push('Write-off has not been considered.');
-  }
+  if (!writeOffConsidered) missingSteps.push('Write-off has not been considered.');
 
-  // Step 13: Salary offset considered (applicable to employee debts)
+  // Salary offset applicable only to employee debt categories
   const salaryOffsetConsidered =
     debt.category === 'overpayment' || debt.category === 'advance'
       ? debt.demandLettersSent >= 1
-      : true; // Not applicable for non-employee categories
-  if (!salaryOffsetConsidered) {
-    missingSteps.push(
-      'Salary offset has not been considered for employee debt (5 U.S.C. Section 5514).'
-    );
-  }
+      : true;
+  if (!salaryOffsetConsidered) missingSteps.push('Salary offset has not been considered for employee debt (5 U.S.C. Section 5514).');
 
   const allStepsComplete = missingSteps.length === 0;
 
