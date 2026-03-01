@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // Client portal only shows non-info findings that are shared
+    // Fetch findings for this engagement
     const findings = db
       .select({
         id: schema.findings.id,
