@@ -80,8 +80,8 @@ export const ScheduleCreateSchema = z.object({
 
 export const AuditLogQuerySchema = z.object({
   engagementId: z.string().optional(),
-  action: z.string().optional(),
-  entityType: z.string().optional(),
+  action: z.enum(['create', 'read', 'update', 'delete', 'analyze', 'export', 'upload', 'login', 'logout']).optional(),
+  entityType: z.enum(['engagement', 'finding', 'control', 'file', 'journal_entry', 'user', 'template', 'schedule', 'signoff', 'workpaper']).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   limit: z.coerce.number().min(1).max(1000).optional().default(100),
