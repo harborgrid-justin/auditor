@@ -126,6 +126,17 @@ export interface UTPMeasurementResult {
   largestAmountThreshold: number;
 }
 
+// --- FMR Revision Tracking ---
+
+export interface FMRRevision {
+  volumeNumber: number;
+  chapterNumber: number;
+  revisionDate: string;
+  previousRevisionDate?: string;
+  changeDescription: string;
+  affectedRuleIds: string[];
+}
+
 // --- Penalty & Interest Engine ---
 
 export type PenaltyType =

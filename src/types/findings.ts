@@ -29,6 +29,8 @@ export interface AuditRule {
   citation: string;
   defaultSeverity: Severity;
   enabled: boolean;
+  effectiveDate?: string;
+  sunsetDate?: string;
   check: (data: EngagementData) => AuditFinding[];
 }
 

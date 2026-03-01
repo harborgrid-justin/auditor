@@ -563,6 +563,333 @@ export interface DualTrackReconciliation {
   isReconciled: boolean;
 }
 
+// --- Debt Management (Volume 16) ---
+
+export type DebtCategory = 'travel_card' | 'overpayment' | 'advance' | 'erroneous_payment' | 'property_loss' | 'other';
+export type DebtStatus = 'active' | 'delinquent' | 'referred_treasury' | 'compromised' | 'written_off' | 'waived' | 'collected';
+
+export interface DebtRecord {
+  id: string;
+  engagementId: string;
+  debtorName: string;
+  debtorId?: string;
+  amount: number;
+  originalAmount: number;
+  category: DebtCategory;
+  status: DebtStatus;
+  establishedDate: string;
+  delinquentDate?: string;
+  dueDate: string;
+  referredToTreasury: boolean;
+  referredDate?: string;
+  enrolledInTOP: boolean;
+  interestAssessed: number;
+  penaltyAssessed: number;
+  adminFeeAssessed: number;
+  totalAmountDue: number;
+  paymentsReceived: number;
+  writeOffRequested: boolean;
+  writeOffApproved: boolean;
+  writeOffApprovedBy?: string;
+  writeOffApprovalLevel?: string;
+  writeOffDate?: string;
+  dueDiligenceComplete: boolean;
+  demandLettersSent: number;
+  skipTracingComplete: boolean;
+  compromiseRequested: boolean;
+  compromiseAmount: number;
+  compromiseApproved: boolean;
+  waiverRequested: boolean;
+  waiverApproved: boolean;
+  waiverAuthority?: string;
+  fiscalYear: number;
+  createdAt: string;
+}
+
+export interface DebtAging {
+  current: number;
+  days1to30: number;
+  days31to60: number;
+  days61to90: number;
+  days91to120: number;
+  over120Days: number;
+  totalDelinquent: number;
+}
+
+// --- FBWT Reconciliation ---
+
+export type FBWTDifferenceType = 'amount' | 'timing' | 'classification' | 'unmatched';
+
+export interface FBWTReconcilingItem {
+  id: string;
+  description: string;
+  differenceType: FBWTDifferenceType;
+  agencyAmount: number;
+  treasuryAmount: number;
+  difference: number;
+  ageInDays: number;
+  accountSymbol: string;
+  category: 'in_transit_disbursement' | 'unprocessed_collection' | 'timing_difference' | 'suspense' | 'other';
+}
+
+export interface FBWTReconciliation {
+  reconciliationDate: string;
+  fiscalYear: number;
+  treasuryAccountSymbol: string;
+  agencyBookBalance: number;
+  treasuryBalance: number;
+  netDifference: number;
+  reconcilingItems: FBWTReconcilingItem[];
+  isReconciled: boolean;
+}
+
+// --- Government Property Accountability ---
+
+export type PropertyCategory = 'general_ppe' | 'national_defense' | 'heritage' | 'stewardship_land' | 'internal_use_software';
+
+export interface PropertyRecord {
+  id: string;
+  engagementId: string;
+  propertyId: string;
+  description: string;
+  category: PropertyCategory;
+  acquisitionDate: string;
+  acquisitionCost: number;
+  currentBookValue: number;
+  accumulatedDepreciation: number;
+  usefulLifeYears?: number;
+  depreciationMethod?: 'straight_line' | 'declining_balance' | 'none';
+  location: string;
+  condition: 'serviceable' | 'unserviceable' | 'excess' | 'surplus';
+  accountableOrganization: string;
+  lastInventoryDate?: string;
+  ussglAccountNumber: string;
+  fiscalYear: number;
+}
+
+export interface DepreciationSchedule {
+  propertyId: string;
+  acquisitionCost: number;
+  salvageValue: number;
+  usefulLifeYears: number;
+  depreciationMethod: 'straight_line' | 'declining_balance';
+  annualDepreciation: number;
+  accumulatedDepreciation: number;
+  currentBookValue: number;
+}
+
+// --- Environmental Liabilities ---
+
+export type EnvironmentalSiteType = 'brac' | 'fuds' | 'active_installation' | 'operational_range' | 'disposal';
+
+export interface EnvironmentalLiability {
+  id: string;
+  engagementId: string;
+  siteName: string;
+  siteType: EnvironmentalSiteType;
+  estimatedCost: number;
+  recordedLiability: number;
+  cleanupStartDate?: string;
+  estimatedCompletionDate?: string;
+  responsibleComponent: string;
+  regulatoryBasis: string;
+  estimateMethodology: string;
+  lastEstimateUpdate: string;
+  fiscalYear: number;
+}
+
+export interface CleanupEstimate {
+  siteId: string;
+  estimateDate: string;
+  lowEstimate: number;
+  midEstimate: number;
+  highEstimate: number;
+  selectedEstimate: number;
+  discountRate?: number;
+  inflationRate?: number;
+  methodology: string;
+}
+
+// --- Federal Employee Benefits ---
+
+export type BenefitType = 'military_retirement' | 'fers' | 'csrs' | 'opeb_health' | 'tsp_matching' | 'feca';
+
+export interface ActuarialLiability {
+  id: string;
+  engagementId: string;
+  benefitType: BenefitType;
+  totalLiability: number;
+  fundedPortion: number;
+  unfundedPortion: number;
+  imputedFinancingCost: number;
+  servicesCost: number;
+  interestCost: number;
+  actuarialGainLoss: number;
+  discountRate: number;
+  inflationAssumption: number;
+  valuationDate: string;
+  nextValuationDate?: string;
+  actuaryFirm?: string;
+  fiscalYear: number;
+}
+
+export interface ActuarialAssumptions {
+  discountRate: number;
+  salaryGrowthRate: number;
+  inflationRate: number;
+  costOfLivingAdjustment: number;
+  mortalityTable: string;
+  retirementAge: number;
+  valuationDate: string;
+}
+
+// --- DATA Act Compliance ---
+
+export type DATAActFileType = 'file_a' | 'file_b' | 'file_c' | 'file_d1' | 'file_d2' | 'file_e' | 'file_f';
+
+export interface DATAActSubmission {
+  id: string;
+  engagementId: string;
+  reportingPeriod: string;
+  fiscalYear: number;
+  fileType: DATAActFileType;
+  totalRecords: number;
+  validRecords: number;
+  errorRecords: number;
+  warningRecords: number;
+  submissionDate: string;
+  certifiedBy?: string;
+  certifiedDate?: string;
+  status: 'draft' | 'submitted' | 'certified' | 'published';
+}
+
+export interface DATAActValidationResult {
+  fileType: DATAActFileType;
+  totalElements: number;
+  completeElements: number;
+  missingElements: string[];
+  crossFileErrors: string[];
+  accuracyScore: number;
+  completenessScore: number;
+}
+
+// --- Lease Accounting (SFFAS 54, effective FY2027) ---
+
+export type LeaseClassification = 'operating' | 'capital' | 'intragovernmental';
+
+export interface LeaseRecord {
+  id: string;
+  engagementId: string;
+  leaseNumber: string;
+  lesseeComponent: string;
+  lessorEntity: string;
+  leaseClassification: LeaseClassification;
+  assetDescription: string;
+  commencementDate: string;
+  terminationDate: string;
+  leaseTermMonths: number;
+  totalLeasePayments: number;
+  annualPayment: number;
+  leaseAssetValue: number;
+  leaseLiabilityBalance: number;
+  discountRate: number;
+  isIntragovernmental: boolean;
+  capitalizedAmount: number;
+  amortizationScheduleExists: boolean;
+  disclosureProvided: boolean;
+  fiscalYear: number;
+}
+
+// --- Corrective Action Plans (CAP) ---
+
+export type CAPStatus = 'draft' | 'active' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
+export type FindingClassification = 'material_weakness' | 'significant_deficiency' | 'noncompliance' | 'other';
+export type NFRStatus = 'issued' | 'management_response' | 'remediation' | 'validated' | 'closed';
+
+export interface CorrectiveActionPlan {
+  id: string;
+  engagementId: string;
+  findingId: string;
+  findingClassification: FindingClassification;
+  findingDescription: string;
+  rootCause: string;
+  correctiveAction: string;
+  responsibleOfficial: string;
+  targetCompletionDate: string;
+  actualCompletionDate?: string;
+  milestones: RemediationMilestone[];
+  status: CAPStatus;
+  evidenceRequired: string[];
+  evidenceProvided: string[];
+  percentComplete: number;
+  fiscalYearIdentified: number;
+  fiscalYearTarget: number;
+  createdAt: string;
+}
+
+export interface RemediationMilestone {
+  id: string;
+  description: string;
+  targetDate: string;
+  completedDate?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue';
+  evidence?: string;
+}
+
+// --- Multi-Component Consolidation ---
+
+export type DoDComponentCode =
+  | 'army' | 'navy' | 'air_force' | 'marines' | 'space_force'
+  | 'dla' | 'dfas' | 'dha' | 'disa' | 'dia' | 'nsa' | 'nga'
+  | 'osd' | 'whs' | 'dtra' | 'dod_ig' | 'other';
+
+export interface DoDComponent {
+  code: DoDComponentCode;
+  name: string;
+  reportingEntity: boolean;
+  parentComponent?: DoDComponentCode;
+}
+
+export interface ConsolidationElimination {
+  id: string;
+  engagementId: string;
+  buyerComponent: DoDComponentCode;
+  sellerComponent: DoDComponentCode;
+  transactionType: string;
+  buyerAmount: number;
+  sellerAmount: number;
+  difference: number;
+  eliminationAmount: number;
+  reconciled: boolean;
+  ussglDebitAccount: string;
+  ussglCreditAccount: string;
+  fiscalYear: number;
+}
+
+export interface ConsolidatedTrialBalance {
+  fiscalYear: number;
+  componentBalances: Array<{
+    component: DoDComponentCode;
+    totalDebits: number;
+    totalCredits: number;
+  }>;
+  eliminations: ConsolidationElimination[];
+  consolidatedDebits: number;
+  consolidatedCredits: number;
+  isBalanced: boolean;
+}
+
+// --- FMR Revision Tracking ---
+
+export interface FMRRevision {
+  volumeNumber: number;
+  chapterNumber: number;
+  revisionDate: string;
+  previousRevisionDate?: string;
+  changeDescription: string;
+  affectedRuleIds: string[];
+}
+
 // --- DoD Engagement Data Extension ---
 
 export interface DoDEngagementData {
@@ -589,6 +916,16 @@ export interface DoDEngagementData {
   fundControls: FundControl[];
   budgetObjectCodes: BudgetObjectCode[];
   sfisElements: SFISElement[];
+  sf133Data?: SF133Data[];
+  debtRecords?: DebtRecord[];
+  propertyRecords?: PropertyRecord[];
+  environmentalLiabilities?: EnvironmentalLiability[];
+  actuarialLiabilities?: ActuarialLiability[];
+  dataActSubmissions?: DATAActSubmission[];
+  leaseRecords?: LeaseRecord[];
+  correctiveActionPlans?: CorrectiveActionPlan[];
+  consolidationEliminations?: ConsolidationElimination[];
+  fbwtReconciliations?: FBWTReconciliation[];
   fiscalYear: number;
   dodComponent: string;
 }
