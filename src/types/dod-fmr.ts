@@ -879,6 +879,222 @@ export interface ConsolidatedTrialBalance {
   isBalanced: boolean;
 }
 
+// --- DD-1414 Base for Reprogramming ---
+
+export type ReprogrammingType = 'prior_approval' | 'internal' | 'below_threshold' | 'above_threshold' | 'transfer';
+export type ReprogrammingStatus = 'draft' | 'submitted' | 'approved' | 'denied' | 'executed' | 'congressional_notification';
+
+export interface ReprogrammingAction {
+  id: string;
+  engagementId: string;
+  reprogrammingNumber: string;
+  type: ReprogrammingType;
+  fromAppropriationId: string;
+  toAppropriationId: string;
+  fromBudgetActivity?: string;
+  toBudgetActivity?: string;
+  amount: number;
+  justification: string;
+  congressionalNotificationRequired: boolean;
+  congressionalNotificationDate?: string;
+  approvedBy?: string;
+  approvedDate?: string;
+  status: ReprogrammingStatus;
+  fiscalYear: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface DD1414Data {
+  treasuryAccountSymbol: string;
+  appropriationTitle: string;
+  fiscalYear: number;
+  asOfDate: string;
+  budgetActivities: DD1414BudgetActivity[];
+  totalOriginalBudget: number;
+  totalReprogrammings: number;
+  totalCurrentBudget: number;
+  reprogrammingActions: ReprogrammingAction[];
+}
+
+export interface DD1414BudgetActivity {
+  activityCode: string;
+  activityTitle: string;
+  originalBudget: number;
+  reprogrammingsIn: number;
+  reprogrammingsOut: number;
+  netReprogramming: number;
+  currentBudget: number;
+}
+
+// --- SF-132 Apportionment Schedule ---
+
+export type ApportionmentCategory = 'category_a' | 'category_b' | 'exempt';
+
+export interface SF132Data {
+  treasuryAccountSymbol: string;
+  appropriationTitle: string;
+  fiscalYear: number;
+  period: string;
+  budgetaryResources: {
+    budgetAuthorityAppropriation: number;
+    borrowingAuthority: number;
+    contractAuthority: number;
+    spendingAuthority: number;
+    unobligatedBalanceBroughtForward: number;
+    adjustments: number;
+    totalBudgetaryResources: number;
+  };
+  apportionments: {
+    categoryA: SF132ApportionmentQuarter[];
+    categoryB: SF132ApportionmentProgram[];
+    exempt: number;
+    totalApportioned: number;
+    amountsNotYetApportioned: number;
+  };
+  application: {
+    obligationsIncurred: number;
+    unobligatedBalanceApportioned: number;
+  };
+}
+
+export interface SF132ApportionmentQuarter {
+  quarter: 1 | 2 | 3 | 4;
+  amount: number;
+  cumulativeAmount: number;
+}
+
+export interface SF132ApportionmentProgram {
+  programCode: string;
+  programName: string;
+  amount: number;
+}
+
+// --- DD-2657 Daily Statement of Accountability ---
+
+export interface DD2657Statement {
+  disbursingOfficerId: string;
+  disbursingOfficerName: string;
+  disbursingStationSymbol: string;
+  statementDate: string;
+  fiscalYear: number;
+  openingBalance: number;
+  receipts: DD2657ReceiptLine[];
+  totalReceipts: number;
+  disbursements: DD2657DisbursementLine[];
+  totalDisbursements: number;
+  closingBalance: number;
+  cashOnHand: number;
+  depositsInTransit: number;
+  checksOutstanding: number;
+  advancesOutstanding: number;
+  totalAccountability: number;
+  balanceDifference: number;
+  isBalanced: boolean;
+}
+
+export interface DD2657ReceiptLine {
+  lineNumber: number;
+  source: string;
+  treasuryAccountSymbol: string;
+  amount: number;
+  documentNumber?: string;
+}
+
+export interface DD2657DisbursementLine {
+  lineNumber: number;
+  payee: string;
+  treasuryAccountSymbol: string;
+  amount: number;
+  voucherNumber: string;
+  paymentMethod: PaymentMethod;
+}
+
+// --- Continuing Resolution ---
+
+export type CRStatus = 'active' | 'expired' | 'superseded_by_full_year';
+
+export interface ContinuingResolution {
+  id: string;
+  publicLaw?: string;
+  startDate: string;
+  endDate: string;
+  rateFormula: 'prior_year_rate' | 'lowest_of_house_senate_prior' | 'custom';
+  customRatePct?: number;
+  anomalies: CRAnomaly[];
+  status: CRStatus;
+  fiscalYear: number;
+}
+
+export interface CRAnomaly {
+  appropriationId: string;
+  description: string;
+  adjustedRate: number;
+  authority: string;
+}
+
+export interface CRConstraintResult {
+  crActive: boolean;
+  constrainedAmount: number;
+  originalApportionment: number;
+  crRateApplied: number;
+  priorYearAmount: number;
+  anomalyApplied: boolean;
+  anomalyDescription?: string;
+  violation: boolean;
+  violationAmount?: number;
+}
+
+// --- Data Classification (CUI/FOUO) ---
+
+export type DataClassification = 'unclassified' | 'cui' | 'cui_specified' | 'fouo';
+
+// --- Approval Workflow ---
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'escalated' | 'expired';
+export type ApprovalEntityType = 'disbursement' | 'ada_violation' | 'reprogramming' | 'debt_writeoff' | 'report' | 'obligation';
+
+export interface ApprovalChain {
+  id: string;
+  engagementId: string;
+  entityType: ApprovalEntityType;
+  entityId: string;
+  steps: ApprovalStep[];
+  currentStepIndex: number;
+  overallStatus: ApprovalStatus;
+  initiatedBy: string;
+  initiatedAt: string;
+  completedAt?: string;
+}
+
+export interface ApprovalStep {
+  id: string;
+  chainId: string;
+  stepIndex: number;
+  requiredRole: string;
+  assignedTo?: string;
+  status: ApprovalStatus;
+  decision?: 'approve' | 'reject';
+  comment?: string;
+  decidedAt?: string;
+  dueDate?: string;
+}
+
+// --- Rule Versioning ---
+
+export interface RuleVersion {
+  id: string;
+  ruleId: string;
+  version: number;
+  contentJson: string;
+  effectiveDate: string;
+  sunsetDate?: string;
+  changedBy: string;
+  changeReason: string;
+  legislationId?: string;
+  createdAt: string;
+}
+
 // --- FMR Revision Tracking ---
 
 export interface FMRRevision {
