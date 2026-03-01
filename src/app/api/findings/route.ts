@@ -36,17 +36,22 @@ export async function GET(req: NextRequest) {
   }
 }
 
+const ALLOWED_STATUSES = ['open', 'resolved', 'accepted', 'in_review'] as const;
+type FindingStatus = (typeof ALLOWED_STATUSES)[number];
+
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, status } = body;
 
-    if (!id || !status) {
-      return NextResponse.json({ error: 'id and status required' }, { status: 400 });
+    if (!id || typeof status !== 'string' || !ALLOWED_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'id and valid status required' }, { status: 400 });
     }
 
+    const typedStatus: FindingStatus = status;
+
     db.update(schema.findings)
-      .set({ status: status as 'open' | 'resolved' | 'accepted' | 'in_review' })
+      .set({ status: typedStatus })
       .where(eq(schema.findings.id, id))
       .run();
 
