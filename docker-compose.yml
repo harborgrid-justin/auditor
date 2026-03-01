@@ -1,17 +1,77 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  # Next.js Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - '3000:3000'
     environment:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-in-production}
       - NEXTAUTH_URL=http://localhost:3000
-      - DATABASE_PROVIDER=sqlite
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # NestJS Backend API
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - '4000:4000'
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-in-production}
+      - FRONTEND_URL=http://localhost:3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=auditpro
+      - DB_USER=auditpro
+      - DB_PASSWORD=${DB_PASSWORD:-auditpro-secure-password}
+      - DB_POOL_SIZE=20
+      - LOG_LEVEL=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_DB=auditpro
+      - POSTGRES_USER=auditpro
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-auditpro-secure-password}
     volumes:
-      - app-data:/app/data
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U auditpro -d auditpro']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis (for BullMQ job queue)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:
-  app-data:
+  postgres-data:
+  redis-data:

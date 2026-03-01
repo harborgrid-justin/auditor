@@ -46,6 +46,17 @@ export const DOD_PARAMETER_DEFINITIONS: TaxParameterDefinition[] = [
 
   // Budget Execution
   { code: 'DOD_ULO_REVIEW_DAYS', displayName: 'Unliquidated Obligation Review Threshold (Days)', description: 'Unliquidated obligation review threshold (days)', ircSection: 'Vol 3, Ch 8', category: 'budget_execution', valueType: 'integer', inflationAdjusted: false },
+  { code: 'DOD_YEAREND_SPIKE_MULTIPLIER', displayName: 'Year-End Spend Spike Multiplier', description: 'Multiplier threshold for detecting year-end spending spikes', ircSection: 'Vol 3, Ch 8', category: 'budget_execution', valueType: 'decimal', inflationAdjusted: false },
+  { code: 'DOD_LOW_EXECUTION_THRESHOLD', displayName: 'Low Execution Rate Threshold', description: 'Low execution rate threshold (below which triggers alert)', ircSection: 'Vol 3, Ch 8', category: 'budget_execution', valueType: 'percentage', inflationAdjusted: false },
+  { code: 'DOD_HIGH_EXECUTION_THRESHOLD', displayName: 'High Execution Rate Threshold', description: 'High execution rate threshold (above which triggers review)', ircSection: 'Vol 3, Ch 8', category: 'budget_execution', valueType: 'percentage', inflationAdjusted: false },
+  { code: 'DOD_STALE_OBLIGATION_DAYS', displayName: 'Stale Obligation Threshold (Days)', description: 'Days after which an unliquidated obligation is considered stale', ircSection: 'Vol 3, Ch 8', category: 'budget_execution', valueType: 'integer', inflationAdjusted: false },
+
+  // ADA Compliance
+  { code: 'DOD_ADA_REPORT_DEADLINE_DAYS', displayName: 'ADA Reporting Deadline (Days)', description: 'Days from discovery to required ADA violation report', ircSection: 'Vol 14, Ch 3', category: 'ada', valueType: 'integer', inflationAdjusted: false },
+
+  // Disbursing Thresholds
+  { code: 'DOD_EXPENSE_INVESTMENT_THRESHOLD', displayName: 'Expense/Investment Threshold', description: 'Dollar threshold between expense and investment classification', ircSection: 'Vol 5, Ch 4', category: 'disbursing', valueType: 'currency', inflationAdjusted: false },
+  { code: 'DOD_EFT_COMPLIANCE_THRESHOLD', displayName: 'EFT Compliance Target Rate', description: 'Target percentage for EFT payment compliance', ircSection: 'Vol 5, Ch 3', category: 'disbursing', valueType: 'percentage', inflationAdjusted: false },
 ];
 
 // Helper to generate parameter entries for a range of years
@@ -176,4 +187,37 @@ export const DOD_PARAMETERS: TaxParameter[] = [
 
   // Unliquidated Obligation Review Threshold (Days) — DoD FMR Vol 3, Ch 8
   ...years(2024, 2026, y => p('DOD_ULO_REVIEW_DAYS', y, 180)),
+
+  // -----------------------------------------------------------------------
+  // Budget Execution Thresholds (previously hardcoded in rule files)
+  // -----------------------------------------------------------------------
+
+  // Year-End Spend Spike Multiplier — DoD FMR Vol 3, Ch 8
+  ...years(2024, 2026, y => p('DOD_YEAREND_SPIKE_MULTIPLIER', y, 2.0)),
+
+  // Low Execution Rate Threshold — DoD FMR Vol 3, Ch 8
+  ...years(2024, 2026, y => p('DOD_LOW_EXECUTION_THRESHOLD', y, 0.25)),
+
+  // High Execution Rate Threshold — DoD FMR Vol 3, Ch 8
+  ...years(2024, 2026, y => p('DOD_HIGH_EXECUTION_THRESHOLD', y, 0.98)),
+
+  // Stale Obligation Days — DoD FMR Vol 3, Ch 8
+  ...years(2024, 2026, y => p('DOD_STALE_OBLIGATION_DAYS', y, 365)),
+
+  // -----------------------------------------------------------------------
+  // ADA Compliance
+  // -----------------------------------------------------------------------
+
+  // ADA Reporting Deadline Days — DoD FMR Vol 14, Ch 3
+  ...years(2024, 2026, y => p('DOD_ADA_REPORT_DEADLINE_DAYS', y, 30)),
+
+  // -----------------------------------------------------------------------
+  // Disbursing Thresholds
+  // -----------------------------------------------------------------------
+
+  // Expense/Investment Threshold — DoD FMR Vol 5, Ch 4
+  ...years(2024, 2026, y => p('DOD_EXPENSE_INVESTMENT_THRESHOLD', y, 250000)),
+
+  // EFT Compliance Threshold (%) — DoD FMR Vol 5, Ch 3
+  ...years(2024, 2026, y => p('DOD_EFT_COMPLIANCE_THRESHOLD', y, 0.95)),
 ];

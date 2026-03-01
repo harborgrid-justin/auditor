@@ -15,6 +15,7 @@
  */
 
 import type { MilitaryPayRecord } from '@/types/dod-fmr';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 // ---------------------------------------------------------------------------
 // FY2025 Military Pay Table
@@ -61,8 +62,8 @@ const FY2025_PAY_TABLE: Record<string, number[]> = {
 /** The fiscal year this embedded table represents. */
 const PAY_TABLE_FISCAL_YEAR = 2025;
 
-/** Annual pay raise percentage applied when scaling away from the base year. */
-const DEFAULT_ANNUAL_RAISE_PCT = 0.045;
+/** Annual pay raise percentage fallback when no parameter is registered. */
+const DEFAULT_ANNUAL_RAISE_PCT_FALLBACK = 0.045;
 
 // ---------------------------------------------------------------------------
 // BAH Rate Structure (simplified national averages, FY2025)
@@ -151,15 +152,21 @@ export function calculateBasicPay(
   const basePay = row[Math.min(yosIndex, row.length - 1)];
 
   // Scale for fiscal year difference from the embedded table year.
+  // Use the DoD military pay raise percentage from the parameter registry
+  // (falls back to 4.5% if no parameter is registered for the target FY).
   let adjustedPay = basePay;
   const yearDelta = fiscalYear - PAY_TABLE_FISCAL_YEAR;
   if (yearDelta > 0) {
     for (let i = 0; i < yearDelta; i++) {
-      adjustedPay *= 1 + DEFAULT_ANNUAL_RAISE_PCT;
+      const fy = PAY_TABLE_FISCAL_YEAR + i + 1;
+      const raisePct = getParameter('DOD_MILPAY_RAISE_PCT', fy, undefined, DEFAULT_ANNUAL_RAISE_PCT_FALLBACK);
+      adjustedPay *= 1 + raisePct;
     }
   } else if (yearDelta < 0) {
     for (let i = 0; i < Math.abs(yearDelta); i++) {
-      adjustedPay /= 1 + DEFAULT_ANNUAL_RAISE_PCT;
+      const fy = PAY_TABLE_FISCAL_YEAR - i;
+      const raisePct = getParameter('DOD_MILPAY_RAISE_PCT', fy, undefined, DEFAULT_ANNUAL_RAISE_PCT_FALLBACK);
+      adjustedPay /= 1 + raisePct;
     }
   }
 

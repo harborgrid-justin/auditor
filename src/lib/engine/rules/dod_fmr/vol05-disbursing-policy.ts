@@ -1,5 +1,6 @@
 import type { AuditRule, AuditFinding, EngagementData } from '@/types/findings';
 import { createFinding } from '@/lib/engine/rule-runner';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 export const disbursingPolicyRules: AuditRule[] = [
   {
@@ -50,8 +51,10 @@ export const disbursingPolicyRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
       const { disbursements } = data.dodData;
+      const eftComplianceThreshold = getParameter('DOD_EFT_COMPLIANCE_THRESHOLD', fy, undefined, 0.95);
 
       const activeDisbursements = disbursements.filter(d =>
         d.status !== 'cancelled' && d.status !== 'returned'
@@ -60,8 +63,9 @@ export const disbursingPolicyRules: AuditRule[] = [
       if (activeDisbursements.length === 0) return findings;
 
       const nonEft = activeDisbursements.filter(d => d.paymentMethod !== 'eft' && d.paymentMethod !== 'intra_gov');
+      const eftComplianceRate = (activeDisbursements.length - nonEft.length) / activeDisbursements.length;
 
-      if (nonEft.length > 0) {
+      if (nonEft.length > 0 && eftComplianceRate < eftComplianceThreshold) {
         const nonEftPct = ((nonEft.length / activeDisbursements.length) * 100).toFixed(1);
         const totalNonEft = nonEft.reduce((sum, d) => sum + d.amount, 0);
         const methodCounts: Record<string, number> = {};
@@ -98,8 +102,10 @@ export const disbursingPolicyRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
       const { disbursements } = data.dodData;
+      const promptPayNetDays = getParameter('DOD_PROMPT_PAY_NET_DAYS', fy, undefined, 30);
 
       const latePayments = disbursements.filter(d => {
         if (!d.promptPayDueDate || !d.disbursementDate) return false;
@@ -117,7 +123,7 @@ export const disbursingPolicyRules: AuditRule[] = [
           'high',
           'Prompt Payment Act Violations Detected',
           `${latePayments.length} disbursement(s) totaling $${(totalLate / 1000000).toFixed(2)}M were paid after the Prompt Payment Act due date. Total interest penalties incurred: $${totalPenalties.toFixed(2)}. Examples: ${latePayments.slice(0, 5).map(d => `${d.disbursementNumber} (due: ${d.promptPayDueDate}, paid: ${d.disbursementDate})`).join('; ')}${latePayments.length > 5 ? ` and ${latePayments.length - 5} more` : ''}. Late payments generate interest penalty costs and violate the Prompt Payment Act.`,
-          'DoD FMR Volume 5, Chapter 10; 5 CFR Part 1315 (Prompt Payment Act): Agencies must pay interest penalties on late payments. The standard payment period is 30 days from receipt of a proper invoice.',
+          `DoD FMR Volume 5, Chapter 10; 5 CFR Part 1315 (Prompt Payment Act): Agencies must pay interest penalties on late payments. The standard payment period is ${promptPayNetDays} days from receipt of a proper invoice.`,
           'Investigate the causes of late payments. Implement payment tracking dashboards with aging alerts. Ensure interest penalties are paid automatically when due.',
           totalPenalties,
           latePayments.map(d => d.disbursementNumber)

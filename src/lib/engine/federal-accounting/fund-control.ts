@@ -34,6 +34,7 @@ import type {
   FundControlLevel,
 } from '@/types/dod-fmr';
 import { v4 as uuid } from 'uuid';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -42,22 +43,25 @@ import { v4 as uuid } from 'uuid';
 /**
  * Prompt Payment Act standard payment terms in calendar days.
  * 31 U.S.C. ss3903(a)(1): 30 days is the default.
+ * Now dynamically resolved via getParameter; fallback preserved.
  */
-const PROMPT_PAYMENT_DEFAULT_DAYS = 30;
+const PROMPT_PAYMENT_DEFAULT_DAYS_FALLBACK = 30;
 
 /**
  * Prompt Payment Act interest rate used when the Treasury rate is not
  * available. In production this would be fetched from the Bureau of the
  * Fiscal Service. Rate is per annum.
+ * Now dynamically resolved via getParameter; fallback preserved.
  */
-const PROMPT_PAYMENT_ANNUAL_RATE = 0.04;
+const PROMPT_PAYMENT_ANNUAL_RATE_FALLBACK = 0.04;
 
 /**
  * Expense/investment threshold (DoD FMR Vol. 2A, Ch. 1). Items below
  * this amount are normally classified as expenses (O&M); items at or
  * above are investments (Procurement).
+ * Now dynamically resolved via getParameter; fallback preserved.
  */
-const EXPENSE_INVESTMENT_THRESHOLD = 250_000;
+const EXPENSE_INVESTMENT_THRESHOLD_FALLBACK = 250_000;
 
 /**
  * Budget Object Codes (BOCs) typically associated with procurement
@@ -486,20 +490,24 @@ export function recordDisbursement(
   const now = new Date();
   const disbursementDate = disbursementData.disbursementDate || now.toISOString();
   const paymentDate = parseDate(disbursementDate);
+  const fy = obligation.fiscalYear ?? federalFiscalYear(now);
 
   // Prompt Payment Act: compute due date and interest penalty
+  const promptPayDays = getParameter('DOD_PROMPT_PAY_NET_DAYS', fy, undefined, PROMPT_PAYMENT_DEFAULT_DAYS_FALLBACK);
+  const promptPayRate = getParameter('DOD_PROMPT_PAY_ANNUAL_RATE', fy, undefined, PROMPT_PAYMENT_ANNUAL_RATE_FALLBACK);
+
   const promptPayDueDate = disbursementData.promptPayDueDate
     ? parseDate(disbursementData.promptPayDueDate)
     : new Date(
         parseDate(obligation.obligatedDate).getTime() +
-        PROMPT_PAYMENT_DEFAULT_DAYS * 86_400_000,
+        promptPayDays * 86_400_000,
       );
 
   const daysLate = Math.max(0, daysBetween(promptPayDueDate, paymentDate));
   let interestPenalty = 0;
   if (daysLate > 0) {
     // Simple interest: principal * annual_rate * (days / 365)
-    interestPenalty = amount * PROMPT_PAYMENT_ANNUAL_RATE * (daysLate / 365);
+    interestPenalty = amount * promptPayRate * (daysLate / 365);
   }
 
   // Apply discount if payment is made by the discount date
@@ -670,6 +678,10 @@ export function checkPurposeRestriction(
   description: string,
 ): { valid: boolean; reason?: string } {
   const boc = budgetObjectCode.trim();
+  const fy = appropriation.fiscalYearStart
+    ? federalFiscalYear(parseDate(appropriation.fiscalYearStart))
+    : federalFiscalYear(new Date());
+  const expenseInvestmentThreshold = getParameter('DOD_EXPENSE_INVESTMENT_THRESHOLD', fy, undefined, EXPENSE_INVESTMENT_THRESHOLD_FALLBACK);
 
   const isProcurementBOC = PROCUREMENT_BOC_PREFIXES.some(prefix => boc.startsWith(prefix));
   const isOMBOC = OM_BOC_PREFIXES.some(prefix => boc.startsWith(prefix));
@@ -682,7 +694,7 @@ export function checkPurposeRestriction(
         `Budget Object Code ${boc} indicates a procurement/investment expense, ` +
         `but appropriation ${appropriation.treasuryAccountSymbol} is O&M. ` +
         `Equipment purchases on O&M funds must be below the expense/investment ` +
-        `threshold of $${EXPENSE_INVESTMENT_THRESHOLD.toLocaleString()}. ` +
+        `threshold of $${expenseInvestmentThreshold.toLocaleString()}. ` +
         `Use Procurement appropriation for investment items. (31 U.S.C. ss1301(a))`,
     };
   }

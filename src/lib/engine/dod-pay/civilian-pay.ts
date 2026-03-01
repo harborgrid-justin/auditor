@@ -16,6 +16,7 @@
  */
 
 import type { CivilianPayRecord } from '@/types/dod-fmr';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 // ---------------------------------------------------------------------------
 // GS Base Pay Table — FY2025 (annual rates)
@@ -46,7 +47,7 @@ const GS_PAY_TABLE_FY2025: number[][] = [
 ];
 
 const GS_TABLE_FISCAL_YEAR = 2025;
-const DEFAULT_GS_RAISE_PCT = 0.046;
+const DEFAULT_GS_RAISE_PCT_FALLBACK = 0.046;
 
 /**
  * Steps represented in the embedded table. We interpolate for other steps.
@@ -138,15 +139,19 @@ export function calculateGSPay(
   // Base pay from embedded table (interpolated for non-anchor steps)
   let basePay = interpolateStepPay(grade - 1, step);
 
-  // Adjust for fiscal year differences
+  // Adjust for fiscal year differences using dynamic GS raise rates
   const yearDelta = fiscalYear - GS_TABLE_FISCAL_YEAR;
   if (yearDelta > 0) {
     for (let i = 0; i < yearDelta; i++) {
-      basePay *= 1 + DEFAULT_GS_RAISE_PCT;
+      const fy = GS_TABLE_FISCAL_YEAR + i + 1;
+      const raisePct = getParameter('DOD_CIVPAY_RAISE_PCT', fy, undefined, DEFAULT_GS_RAISE_PCT_FALLBACK);
+      basePay *= 1 + raisePct;
     }
   } else if (yearDelta < 0) {
     for (let i = 0; i < Math.abs(yearDelta); i++) {
-      basePay /= 1 + DEFAULT_GS_RAISE_PCT;
+      const fy = GS_TABLE_FISCAL_YEAR - i;
+      const raisePct = getParameter('DOD_CIVPAY_RAISE_PCT', fy, undefined, DEFAULT_GS_RAISE_PCT_FALLBACK);
+      basePay /= 1 + raisePct;
     }
   }
 

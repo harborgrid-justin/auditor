@@ -17,17 +17,18 @@
  */
 
 import type { ContractRecord, ContractPayment, Obligation } from '@/types/dod-fmr';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 // ---------------------------------------------------------------------------
-// Progress Payment Rate Constants
+// Progress Payment Rate Constants (fallbacks)
 // Per FAR 32.501-1 and DFARS 232.501-1
 // ---------------------------------------------------------------------------
 
-/** Maximum progress payment rate for large businesses (FAR 32.501-1(a)). */
-const LARGE_BUSINESS_PROGRESS_RATE = 0.80;
+/** Fallback progress payment rate for large businesses (FAR 32.501-1(a)). */
+const LARGE_BUSINESS_PROGRESS_RATE_FALLBACK = 0.80;
 
-/** Maximum progress payment rate for small businesses (FAR 32.501-1(b)). */
-const SMALL_BUSINESS_PROGRESS_RATE = 0.85;
+/** Fallback progress payment rate for small businesses (FAR 32.501-1(b)). */
+const SMALL_BUSINESS_PROGRESS_RATE_FALLBACK = 0.85;
 
 /** Default retainage percentages by contract type. */
 const RETAINAGE_RATES: Record<string, number> = {
@@ -40,8 +41,8 @@ const RETAINAGE_RATES: Record<string, number> = {
   other:                0.10,
 };
 
-/** DCAA audit threshold for non-cost-type contracts (simplified). */
-const DCAA_THRESHOLD = 25_000_000;
+/** Fallback DCAA audit threshold for non-cost-type contracts. */
+const DCAA_THRESHOLD_FALLBACK = 25_000_000;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -73,9 +74,10 @@ export function validateProgressPayment(
     return { valid: false, maxRate: 0, findings };
   }
 
-  // Determine the applicable max progress payment rate.
+  // Determine the applicable max progress payment rate using fiscal-year parameters.
   // Default to large business rate; small business gets a higher cap.
-  const maxRate = LARGE_BUSINESS_PROGRESS_RATE;
+  const fy = contract.fiscalYear ?? new Date().getFullYear();
+  const maxRate = getParameter('DOD_PROGRESS_PAY_LB_PCT', fy, undefined, LARGE_BUSINESS_PROGRESS_RATE_FALLBACK);
 
   // Validate the progress payment percentage
   if (payment.progressPaymentPct !== undefined && payment.progressPaymentPct !== null) {
@@ -270,7 +272,8 @@ export function checkDCAARequirement(
   }
 
   // Non-cost-type contracts: DCAA required if payment exceeds threshold
-  if (paymentAmount > DCAA_THRESHOLD) {
+  const dcaaThreshold = getParameter('DOD_DCAA_AUDIT_THRESHOLD', contract.fiscalYear ?? new Date().getFullYear(), undefined, DCAA_THRESHOLD_FALLBACK);
+  if (paymentAmount > dcaaThreshold) {
     return true;
   }
 
