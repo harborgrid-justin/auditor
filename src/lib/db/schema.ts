@@ -1010,3 +1010,233 @@ export const approvalSteps = sqliteTable('approval_steps', {
   decidedAt: text('decided_at'),
   dueDate: text('due_date'),
 });
+
+// ============================================================
+// Phase 7: Enterprise Feature Database Tables
+// ============================================================
+
+// --- Rule Version Registry (Phase 1.1) ---
+
+export const ruleVersionsTable = sqliteTable('rule_versions', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id').notNull(),
+  version: integer('version').notNull(),
+  contentJson: text('content_json').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+  sunsetDate: text('sunset_date'),
+  changedBy: text('changed_by').notNull(),
+  changeReason: text('change_reason').notNull(),
+  legislationId: text('legislation_id'),
+  createdAt: text('created_at').notNull(),
+});
+
+// --- Legislative Changes (Phase 1.2) ---
+
+export const legislativeChanges = sqliteTable('legislative_changes', {
+  id: text('id').primaryKey(),
+  ndaaFiscalYear: integer('ndaa_fiscal_year').notNull(),
+  publicLawNumber: text('public_law_number').notNull(),
+  sectionNumber: text('section_number').notNull(),
+  sectionTitle: text('section_title').notNull(),
+  description: text('description').notNull(),
+  affectedFMRVolumes: text('affected_fmr_volumes').notNull(), // JSON array
+  affectedParameterCodes: text('affected_parameter_codes').notNull(), // JSON array
+  affectedRuleIds: text('affected_rule_ids').notNull(), // JSON array
+  effectiveDate: text('effective_date').notNull(),
+  ingestedAt: text('ingested_at'),
+  ingestedBy: text('ingested_by'),
+});
+
+// --- Fiscal Year Rollovers (Phase 1.3) ---
+
+export const fiscalYearRollovers = sqliteTable('fiscal_year_rollovers', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  closingFiscalYear: integer('closing_fiscal_year').notNull(),
+  openingFiscalYear: integer('opening_fiscal_year').notNull(),
+  rolloverDate: text('rollover_date').notNull(),
+  performedBy: text('performed_by').notNull(),
+  totalClosingEntries: integer('total_closing_entries').notNull(),
+  totalAppropriationsExpired: integer('total_appropriations_expired').notNull(),
+  totalAppropriationsCancelled: integer('total_appropriations_cancelled').notNull(),
+  totalULOCarryForward: real('total_ulo_carry_forward').notNull(),
+  totalCancelledBalances: real('total_cancelled_balances').notNull(),
+  resultJson: text('result_json').notNull(), // Full rollover result
+  createdAt: text('created_at').notNull(),
+});
+
+// --- FMS Cases (Phase 2.2 — Security Cooperation) ---
+
+export const fmsCases = sqliteTable('fms_cases', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  caseId: text('case_id').notNull(),
+  country: text('country').notNull(),
+  caseType: text('case_type', {
+    enum: ['direct_commercial_sale', 'fms_case', 'building_partner_capacity'],
+  }).notNull(),
+  status: text('status', {
+    enum: ['draft', 'loa_offered', 'loa_accepted', 'implementing', 'delivery', 'billing', 'collection', 'closeout'],
+  }).notNull().default('draft'),
+  totalValue: real('total_value').notNull(),
+  deliveredValue: real('delivered_value').notNull().default(0),
+  billedAmount: real('billed_amount').notNull().default(0),
+  collectedAmount: real('collected_amount').notNull().default(0),
+  implementingAgency: text('implementing_agency').notNull(),
+  loaDate: text('loa_date'),
+  closureDate: text('closure_date'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+// --- Lease Amortization Schedules (Phase 2.1) ---
+
+export const leaseAmortizationSchedules = sqliteTable('lease_amortization_schedules', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  leaseId: text('lease_id').notNull(),
+  periodNumber: integer('period_number').notNull(),
+  periodDate: text('period_date').notNull(),
+  beginningBalance: real('beginning_balance').notNull(),
+  payment: real('payment').notNull(),
+  interestExpense: real('interest_expense').notNull(),
+  principalReduction: real('principal_reduction').notNull(),
+  endingBalance: real('ending_balance').notNull(),
+  assetAmortization: real('asset_amortization').notNull(),
+  assetBookValue: real('asset_book_value').notNull(),
+});
+
+// --- Military Pay Tables (Phase 4.1) ---
+
+export const militaryPayTables = sqliteTable('military_pay_tables', {
+  id: text('id').primaryKey(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  payGrade: text('pay_grade').notNull(),
+  yearsOfService: integer('years_of_service').notNull(),
+  monthlyBasicPay: real('monthly_basic_pay').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+  authority: text('authority'),
+});
+
+// --- Civilian Pay Tables (Phase 4.2) ---
+
+export const civilianPayTables = sqliteTable('civilian_pay_tables', {
+  id: text('id').primaryKey(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  payPlan: text('pay_plan').notNull().default('GS'),
+  grade: integer('grade').notNull(),
+  step: integer('step').notNull(),
+  locality: text('locality').notNull(),
+  annualRate: real('annual_rate').notNull(),
+  localityAdjustmentPct: real('locality_adjustment_pct').notNull(),
+  effectiveDate: text('effective_date').notNull(),
+});
+
+// --- Debt Demand Letters (Phase 2.4) ---
+
+export const debtDemandLetters = sqliteTable('debt_demand_letters', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  debtRecordId: text('debt_record_id').notNull(),
+  letterType: text('letter_type', {
+    enum: ['initial', '30_day', '60_day', '90_day', 'final'],
+  }).notNull(),
+  generatedDate: text('generated_date').notNull(),
+  dueDate: text('due_date').notNull(),
+  debtorName: text('debtor_name').notNull(),
+  amount: real('amount').notNull(),
+  sentDate: text('sent_date'),
+  responseReceived: integer('response_received', { mode: 'boolean' }).notNull().default(false),
+});
+
+// --- Budget Formulations (Phase 2.3) ---
+
+export const budgetFormulations = sqliteTable('budget_formulations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  formType: text('form_type', {
+    enum: ['pom', 'bes', 'fydp', 'unfunded_requirement', 'congressional_justification'],
+  }).notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  ppbePhase: text('ppbe_phase', {
+    enum: ['planning', 'programming', 'budgeting', 'execution'],
+  }).notNull(),
+  status: text('status', {
+    enum: ['draft', 'submitted', 'reviewed', 'approved', 'enacted'],
+  }).notNull().default('draft'),
+  dataJson: text('data_json').notNull(),
+  submittedBy: text('submitted_by'),
+  submittedDate: text('submitted_date'),
+  createdAt: text('created_at').notNull(),
+});
+
+// --- MFA Secrets (Phase 6.2) ---
+
+export const mfaSecrets = sqliteTable('mfa_secrets', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  secret: text('secret').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+  backupCodesJson: text('backup_codes_json').notNull(), // JSON array of hashed codes
+  createdAt: text('created_at').notNull(),
+  lastUsedAt: text('last_used_at'),
+});
+
+// --- Escalation Rules (Phase 1.2) ---
+
+export const escalationRules = sqliteTable('escalation_rules', {
+  id: text('id').primaryKey(),
+  parameterCode: text('parameter_code').notNull(),
+  escalationType: text('escalation_type', {
+    enum: ['cpi', 'eci', 'legislative', 'administrative', 'actuarial', 'fixed'],
+  }).notNull(),
+  indexType: text('index_type'),
+  fixedRate: real('fixed_rate'),
+  roundingRule: text('rounding_rule', {
+    enum: ['none', 'nearest_dollar', 'nearest_hundred', 'nearest_thousand'],
+  }).notNull(),
+  authority: text('authority').notNull(),
+  frequency: text('frequency', {
+    enum: ['annual', 'biennial', 'quinquennial'],
+  }).notNull(),
+  effectiveMonth: integer('effective_month').notNull(),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  maxEscalationPct: real('max_escalation_pct'),
+  minEscalationPct: real('min_escalation_pct'),
+});
+
+// --- IGT Reconciliation (Phase 5.2) ---
+
+export const igtReconciliations = sqliteTable('igt_reconciliations', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  tradingPartnerAgency: text('trading_partner_agency').notNull(),
+  tradingPartnerTas: text('trading_partner_tas'),
+  buyerAmount: real('buyer_amount').notNull(),
+  sellerAmount: real('seller_amount').notNull(),
+  difference: real('difference').notNull(),
+  reconciliationStatus: text('reconciliation_status', {
+    enum: ['matched', 'unmatched', 'in_dispute', 'resolved'],
+  }).notNull(),
+  period: text('period').notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+// --- Contract Closeouts (Phase 2.6) ---
+
+export const contractCloseouts = sqliteTable('contract_closeouts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  contractId: text('contract_id').notNull(),
+  contractNumber: text('contract_number').notNull(),
+  status: text('status', {
+    enum: ['not_started', 'physically_complete', 'closeout_initiated', 'indirect_rates_settled', 'final_payment_processed', 'property_cleared', 'patent_cleared', 'release_obtained', 'closed'],
+  }).notNull().default('not_started'),
+  physicalCompletionDate: text('physical_completion_date'),
+  closeoutDeadline: text('closeout_deadline'),
+  quickCloseoutEligible: integer('quick_closeout_eligible', { mode: 'boolean' }).notNull().default(false),
+  checklistJson: text('checklist_json'), // Full checklist state
+  deobligatedAmount: real('deobligated_amount'),
+  createdAt: text('created_at').notNull(),
+});

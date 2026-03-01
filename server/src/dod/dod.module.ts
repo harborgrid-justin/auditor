@@ -22,6 +22,22 @@ import { UssglService } from './ussgl/ussgl.service';
 import { DodReportsController } from './reports/dod-reports.controller';
 import { DodReportsService } from './reports/dod-reports.service';
 
+// New modules — Phase 7
+import { SecurityCooperationController } from './security-cooperation/security-cooperation.controller';
+import { SecurityCooperationService } from './security-cooperation/security-cooperation.service';
+import { BudgetFormulationController } from './budget-formulation/budget-formulation.controller';
+import { BudgetFormulationService } from './budget-formulation/budget-formulation.service';
+import { DebtManagementController } from './debt-management/debt-management.controller';
+import { DebtManagementService } from './debt-management/debt-management.service';
+import { LeasesController } from './leases/leases.controller';
+import { LeasesService } from './leases/leases.service';
+import { PayTablesController } from './pay-tables/pay-tables.controller';
+import { PayTablesService } from './pay-tables/pay-tables.service';
+import { FinancialStatementsController } from './financial-statements/financial-statements.controller';
+import { FinancialStatementsService } from './financial-statements/financial-statements.service';
+import { IGTReconciliationController } from './igt-reconciliation/igt-reconciliation.controller';
+import { IGTReconciliationService } from './igt-reconciliation/igt-reconciliation.service';
+
 @Module({
   controllers: [
     AppropriationsController,
@@ -35,6 +51,14 @@ import { DodReportsService } from './reports/dod-reports.service';
     ContractsController,
     UssglController,
     DodReportsController,
+    // New controllers
+    SecurityCooperationController,
+    BudgetFormulationController,
+    DebtManagementController,
+    LeasesController,
+    PayTablesController,
+    FinancialStatementsController,
+    IGTReconciliationController,
   ],
   providers: [
     AppropriationsService,
@@ -48,12 +72,24 @@ import { DodReportsService } from './reports/dod-reports.service';
     ContractsService,
     UssglService,
     DodReportsService,
+    // New services
+    SecurityCooperationService,
+    BudgetFormulationService,
+    DebtManagementService,
+    LeasesService,
+    PayTablesService,
+    FinancialStatementsService,
+    IGTReconciliationService,
   ],
   exports: [
     AppropriationsService,
     ObligationsService,
     AdaService,
     FundControlService,
+    SecurityCooperationService,
+    DebtManagementService,
+    LeasesService,
+    IGTReconciliationService,
   ],
 })
 export class DodModule {}
