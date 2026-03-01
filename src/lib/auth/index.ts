@@ -55,7 +55,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET || 'auditor-secret-key-change-in-production',
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export async function createUser(email: string, password: string, name: string, role: string = 'auditor') {
