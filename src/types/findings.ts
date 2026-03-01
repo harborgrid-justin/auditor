@@ -43,6 +43,9 @@ export interface EngagementData {
   materialityThreshold: number;
   fiscalYearEnd: string;
   priorPeriodAccounts?: import('./financial').Account[];
+  taxYear: number;
+  entityType?: string;
+  uncertainTaxPositions?: import('./tax-compliance').UncertainTaxPosition[];
 }
 
 export interface RuleResult {
