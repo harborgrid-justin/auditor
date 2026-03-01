@@ -14,6 +14,7 @@
  */
 
 import type { TravelOrder, TravelVoucher, TravelCardTransaction } from '@/types/dod-fmr';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 // ---------------------------------------------------------------------------
 // Per Diem and Lodging Rate Data
@@ -23,10 +24,10 @@ import type { TravelOrder, TravelVoucher, TravelCardTransaction } from '@/types/
 // selected high-cost locations.
 // ---------------------------------------------------------------------------
 
-const DEFAULT_CONUS_MIE_RATE = 59;
-const DEFAULT_CONUS_LODGING_RATE = 107;
-const DEFAULT_OCONUS_MIE_RATE = 74;
-const DEFAULT_OCONUS_LODGING_RATE = 150;
+const DEFAULT_CONUS_MIE_RATE_FALLBACK = 59;
+const DEFAULT_CONUS_LODGING_RATE_FALLBACK = 107;
+const DEFAULT_OCONUS_MIE_RATE_FALLBACK = 74;
+const DEFAULT_OCONUS_LODGING_RATE_FALLBACK = 150;
 
 /**
  * Per diem rates for selected high-cost CONUS locations.
@@ -70,18 +71,24 @@ function isOCONUS(normalized: string): boolean {
   return OCONUS_KEYWORDS.some(kw => normalized.includes(kw));
 }
 
-function lookupMIERate(destination: string, _fiscalYear: number): number {
+function lookupMIERate(destination: string, fiscalYear: number): number {
   const normalized = normalizeDestination(destination);
   const override = LOCATION_RATES[normalized];
   if (override) return override.mie;
-  return isOCONUS(normalized) ? DEFAULT_OCONUS_MIE_RATE : DEFAULT_CONUS_MIE_RATE;
+  if (isOCONUS(normalized)) {
+    return getParameter('DOD_OCONUS_PER_DIEM', fiscalYear, undefined, DEFAULT_OCONUS_MIE_RATE_FALLBACK);
+  }
+  return getParameter('DOD_CONUS_PER_DIEM', fiscalYear, undefined, DEFAULT_CONUS_MIE_RATE_FALLBACK);
 }
 
-function lookupLodgingRate(destination: string, _fiscalYear: number): number {
+function lookupLodgingRate(destination: string, fiscalYear: number): number {
   const normalized = normalizeDestination(destination);
   const override = LOCATION_RATES[normalized];
   if (override) return override.lodging;
-  return isOCONUS(normalized) ? DEFAULT_OCONUS_LODGING_RATE : DEFAULT_CONUS_LODGING_RATE;
+  if (isOCONUS(normalized)) {
+    return getParameter('DOD_OCONUS_LODGING', fiscalYear, undefined, DEFAULT_OCONUS_LODGING_RATE_FALLBACK);
+  }
+  return getParameter('DOD_CONUS_LODGING', fiscalYear, undefined, DEFAULT_CONUS_LODGING_RATE_FALLBACK);
 }
 
 function daysBetween(startDate: string, endDate: string): number {

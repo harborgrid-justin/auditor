@@ -1,5 +1,6 @@
 import type { AuditRule, AuditFinding, EngagementData } from '@/types/findings';
 import { createFinding } from '@/lib/engine/rule-runner';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 export const antiDeficiencyActRules: AuditRule[] = [
   {
@@ -333,7 +334,9 @@ export const antiDeficiencyActRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
+      const adaReportDeadlineDays = getParameter('DOD_ADA_REPORT_DEADLINE_DAYS', fy, undefined, 30);
 
       for (const violation of data.dodData.adaViolations) {
         if (!violation.discoveredDate) continue;
@@ -344,7 +347,7 @@ export const antiDeficiencyActRules: AuditRule[] = [
           const reportedDate = new Date(violation.reportedDate);
           const daysDiff = Math.ceil((reportedDate.getTime() - discoveredDate.getTime()) / (1000 * 60 * 60 * 24));
 
-          if (daysDiff > 30) {
+          if (daysDiff > adaReportDeadlineDays) {
             findings.push(createFinding(
               data.engagementId,
               'DOD-FMR-V14-008',
@@ -353,7 +356,7 @@ export const antiDeficiencyActRules: AuditRule[] = [
               `ADA Violation Reporting Delay: ${daysDiff} Days`,
               `ADA violation "${violation.violationType}" (amount: $${violation.amount.toLocaleString()}): discovered on ${violation.discoveredDate} but not reported until ${violation.reportedDate} (${daysDiff} days gap). 31 U.S.C. 1351 requires violations to be reported "immediately" to the President and Congress. A ${daysDiff}-day delay is non-compliant.`,
               'DoD FMR Vol 14, Ch 3; 31 U.S.C. 1351 - The head of the agency shall report immediately to the President and Congress all relevant facts and a statement of actions taken when an ADA violation is confirmed.',
-              'Review the investigation and reporting process to identify bottlenecks. Ensure future ADA violations are reported within the timeframe prescribed by DoD FMR Vol 14. Establish procedures for immediate preliminary notification while investigations continue.',
+              `Review the investigation and reporting process to identify bottlenecks. Ensure future ADA violations are reported within ${adaReportDeadlineDays} days as prescribed by DoD FMR Vol 14. Establish procedures for immediate preliminary notification while investigations continue.`,
               violation.amount,
               [violation.id]
             ));

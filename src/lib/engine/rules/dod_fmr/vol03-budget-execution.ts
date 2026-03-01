@@ -1,5 +1,6 @@
 import type { AuditRule, AuditFinding, EngagementData } from '@/types/findings';
 import { createFinding } from '@/lib/engine/rule-runner';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 export const budgetExecutionRules: AuditRule[] = [
   {
@@ -272,11 +273,13 @@ export const budgetExecutionRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
       const { obligations } = data.dodData;
       const now = new Date();
+      const uloReviewDays = getParameter('DOD_ULO_REVIEW_DAYS', fy, undefined, 180);
       const sixMonthsAgo = new Date(now);
-      sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+      sixMonthsAgo.setDate(sixMonthsAgo.getDate() - uloReviewDays);
 
       const agedULOs = obligations.filter(o => {
         if (o.unliquidatedBalance <= 0) return false;
@@ -293,9 +296,9 @@ export const budgetExecutionRules: AuditRule[] = [
           'DOD_FMR',
           'medium',
           'Aged Unliquidated Obligations Detected',
-          `${agedULOs.length} obligation(s) have unliquidated balances outstanding for more than 180 days, totaling $${(totalULO / 1000000).toFixed(2)}M. Examples: ${agedULOs.slice(0, 5).map(o => `${o.obligationNumber} ($${(o.unliquidatedBalance / 1000000).toFixed(2)}M, obligated ${o.obligatedDate})`).join('; ')}${agedULOs.length > 5 ? ` and ${agedULOs.length - 5} more` : ''}. Aged ULOs may indicate invalid obligations, failed deliveries, or administrative oversights that should be reviewed for potential deobligation.`,
+          `${agedULOs.length} obligation(s) have unliquidated balances outstanding for more than ${uloReviewDays} days, totaling $${(totalULO / 1000000).toFixed(2)}M. Examples: ${agedULOs.slice(0, 5).map(o => `${o.obligationNumber} ($${(o.unliquidatedBalance / 1000000).toFixed(2)}M, obligated ${o.obligatedDate})`).join('; ')}${agedULOs.length > 5 ? ` and ${agedULOs.length - 5} more` : ''}. Aged ULOs may indicate invalid obligations, failed deliveries, or administrative oversights that should be reviewed for potential deobligation.`,
           'DoD FMR Volume 3, Chapter 8; OMB Circular A-11, Section 130: Agencies must review unliquidated obligations at least annually and deobligate amounts no longer needed.',
-          'Perform a comprehensive review of all ULOs older than 180 days. Contact contracting officers and program managers to validate remaining balances. Deobligate funds that are no longer needed.',
+          `Perform a comprehensive review of all ULOs older than ${uloReviewDays} days. Contact contracting officers and program managers to validate remaining balances. Deobligate funds that are no longer needed.`,
           totalULO,
           agedULOs.slice(0, 20).map(o => o.obligationNumber)
         ));
@@ -315,11 +318,13 @@ export const budgetExecutionRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
       const { obligations } = data.dodData;
       const now = new Date();
-      const twelveMonthsAgo = new Date(now);
-      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+      const staleObligationDays = getParameter('DOD_STALE_OBLIGATION_DAYS', fy, undefined, 365);
+      const staleDate = new Date(now);
+      staleDate.setDate(staleDate.getDate() - staleObligationDays);
 
       const fullyDeliveredWithBalance = obligations.filter(o =>
         o.status === 'fully_liquidated' && o.unliquidatedBalance > 0
@@ -345,7 +350,7 @@ export const budgetExecutionRules: AuditRule[] = [
         if (o.status !== 'open') return false;
         if (o.liquidatedAmount > 0) return false;
         const obligatedDate = new Date(o.obligatedDate);
-        return obligatedDate < twelveMonthsAgo;
+        return obligatedDate < staleDate;
       });
 
       if (staleObligations.length > 0) {
@@ -356,7 +361,7 @@ export const budgetExecutionRules: AuditRule[] = [
           'DOD_FMR',
           'medium',
           'Stale Obligations with No Liquidation Activity',
-          `${staleObligations.length} obligation(s) totaling $${(totalStale / 1000000).toFixed(2)}M have been open for over 12 months with zero liquidation activity. Examples: ${staleObligations.slice(0, 5).map(o => `${o.obligationNumber} ($${(o.amount / 1000000).toFixed(2)}M, since ${o.obligatedDate})`).join('; ')}${staleObligations.length > 5 ? ` and ${staleObligations.length - 5} more` : ''}.`,
+          `${staleObligations.length} obligation(s) totaling $${(totalStale / 1000000).toFixed(2)}M have been open for over ${staleObligationDays} days with zero liquidation activity. Examples: ${staleObligations.slice(0, 5).map(o => `${o.obligationNumber} ($${(o.amount / 1000000).toFixed(2)}M, since ${o.obligatedDate})`).join('; ')}${staleObligations.length > 5 ? ` and ${staleObligations.length - 5} more` : ''}.`,
           'DoD FMR Volume 3, Chapter 8: Obligations must be reviewed periodically and deobligated when no longer valid.',
           'Contact contracting officers and program managers to validate each stale obligation. Process deobligations for obligations where the underlying requirement no longer exists.',
           totalStale,
@@ -455,8 +460,12 @@ export const budgetExecutionRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
       const { appropriations } = data.dodData;
+
+      const lowExecutionThreshold = getParameter('DOD_LOW_EXECUTION_THRESHOLD', fy, undefined, 0.25);
+      const highExecutionThreshold = getParameter('DOD_HIGH_EXECUTION_THRESHOLD', fy, undefined, 0.98);
 
       const currentApprops = appropriations.filter(a =>
         a.status === 'current' && a.totalAuthority > 0
@@ -465,7 +474,7 @@ export const budgetExecutionRules: AuditRule[] = [
       for (const approp of currentApprops) {
         const executionRate = approp.obligated / approp.totalAuthority;
 
-        if (executionRate > 0.98) {
+        if (executionRate > highExecutionThreshold) {
           findings.push(createFinding(
             data.engagementId,
             'DOD-FMR-V03-011',
@@ -478,7 +487,7 @@ export const budgetExecutionRules: AuditRule[] = [
             null,
             [approp.treasuryAccountSymbol]
           ));
-        } else if (executionRate < 0.25 && approp.totalAuthority > 1000000) {
+        } else if (executionRate < lowExecutionThreshold && approp.totalAuthority > 1000000) {
           findings.push(createFinding(
             data.engagementId,
             'DOD-FMR-V03-011',
@@ -508,10 +517,13 @@ export const budgetExecutionRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
       const { obligations } = data.dodData;
 
       if (obligations.length === 0) return findings;
+
+      const spikeMultiplier = getParameter('DOD_YEAREND_SPIKE_MULTIPLIER', fy, undefined, 2.0);
 
       const fiscalYear = data.dodData.fiscalYear;
       const q4Start = new Date(`${fiscalYear}-07-01`);
@@ -535,7 +547,7 @@ export const budgetExecutionRules: AuditRule[] = [
       const q1q3Total = q1q3Obligations.reduce((sum, o) => sum + o.amount, 0);
       const q1q3AvgPerQuarter = q1q3Total / 3;
 
-      if (q1q3AvgPerQuarter > 0 && q4Total > q1q3AvgPerQuarter * 2) {
+      if (q1q3AvgPerQuarter > 0 && q4Total > q1q3AvgPerQuarter * spikeMultiplier) {
         const spikeRatio = q4Total / q1q3AvgPerQuarter;
         findings.push(createFinding(
           data.engagementId,

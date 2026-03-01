@@ -1,5 +1,6 @@
 import type { AuditRule, AuditFinding, EngagementData } from '@/types/findings';
 import { createFinding } from '@/lib/engine/rule-runner';
+import { getParameter } from '@/lib/engine/tax-parameters/registry';
 
 export const contractPaymentRules: AuditRule[] = [
   {
@@ -13,24 +14,28 @@ export const contractPaymentRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
 
-      const defaultMaxRate = 80; // Large business default
+      const lbPct = getParameter('DOD_PROGRESS_PAY_LB_PCT', fy, undefined, 0.80);
+      const sbPct = getParameter('DOD_PROGRESS_PAY_SB_PCT', fy, undefined, 0.90);
+      const defaultMaxRate = lbPct * 100; // Large business default as percentage
+      const smallBizMaxRate = sbPct * 100; // Small business max as percentage
 
       for (const payment of data.dodData.contractPayments) {
         if (payment.paymentType !== 'progress' || !payment.progressPaymentPct) continue;
 
         if (payment.progressPaymentPct > defaultMaxRate) {
-          const severity = payment.progressPaymentPct > 90 ? 'critical' : 'high';
+          const severity = payment.progressPaymentPct > smallBizMaxRate ? 'critical' : 'high';
           findings.push(createFinding(
             data.engagementId,
             'DOD-FMR-V10-001',
             'DOD_FMR',
             severity,
             `Progress Payment Rate Exceeds ${defaultMaxRate}% Threshold`,
-            `Contract ${payment.contractNumber}: progress payment of $${payment.approvedAmount.toLocaleString()} applied at ${payment.progressPaymentPct}%, which exceeds the ${defaultMaxRate}% maximum rate for large businesses. If the contractor is a small business, the maximum is 90%. Rates above 90% are never permissible. This may constitute an excessive advance of government funds.`,
-            'DoD FMR Vol 10, Ch 9; FAR 32.501-1 - Progress payment rates shall not exceed 80% for large businesses or 90% for small businesses.',
-            'Verify the contractor business size determination in SAM.gov. If the contractor is not a qualifying small business, reduce the progress payment rate to 80%. Recover any excess payment amount and adjust future progress payment requests accordingly.',
+            `Contract ${payment.contractNumber}: progress payment of $${payment.approvedAmount.toLocaleString()} applied at ${payment.progressPaymentPct}%, which exceeds the ${defaultMaxRate}% maximum rate for large businesses. If the contractor is a small business, the maximum is ${smallBizMaxRate}%. Rates above ${smallBizMaxRate}% are never permissible. This may constitute an excessive advance of government funds.`,
+            `DoD FMR Vol 10, Ch 9; FAR 32.501-1 - Progress payment rates shall not exceed ${defaultMaxRate}% for large businesses or ${smallBizMaxRate}% for small businesses.`,
+            `Verify the contractor business size determination in SAM.gov. If the contractor is not a qualifying small business, reduce the progress payment rate to ${defaultMaxRate}%. Recover any excess payment amount and adjust future progress payment requests accordingly.`,
             payment.approvedAmount * (payment.progressPaymentPct - defaultMaxRate) / 100,
             ['Contract Payment - Progress Payment']
           ));
@@ -101,7 +106,9 @@ export const contractPaymentRules: AuditRule[] = [
     enabled: true,
     check: (data: EngagementData): AuditFinding[] => {
       if (!data.dodData) return [];
+      const fy = data.dodData?.fiscalYear ?? new Date(data.fiscalYearEnd).getFullYear();
       const findings: AuditFinding[] = [];
+      const dcaaAuditThreshold = getParameter('DOD_DCAA_AUDIT_THRESHOLD', fy, undefined, 2000000);
 
       for (const payment of data.dodData.contractPayments) {
         if (!payment.dcaaAuditRequired) continue;
@@ -121,7 +128,7 @@ export const contractPaymentRules: AuditRule[] = [
           ));
         }
 
-        if (payment.dcaaAuditStatus === 'pending' && payment.approvedAmount > 0) {
+        if (payment.dcaaAuditStatus === 'pending' && payment.approvedAmount > dcaaAuditThreshold) {
           findings.push(createFinding(
             data.engagementId,
             'DOD-FMR-V10-003',
