@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { AdaService } from './ada.service';
 import { CreateAdaViolationDto, UpdateAdaViolationDto, ValidateAdaDto } from './ada.dto';
 
@@ -23,8 +24,8 @@ export class AdaController {
   @Get()
   @ApiOperation({ summary: 'List ADA violations for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const violations = await this.adaService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const violations = await this.adaService.findByEngagement(engagementId, pagination);
     return { violations };
   }
 

@@ -1,12 +1,13 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import { CreateFundControlDto, UpdateFundControlDto } from './fund-control.dto';
 
 @Injectable()
 export class FundControlService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async checkFundAvailability(appropriationId: string, amount?: number) {
     const { appropriations, fundControls } = await import('@shared/lib/db/pg-schema');

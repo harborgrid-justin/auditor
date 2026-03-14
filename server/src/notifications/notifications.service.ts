@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../database/database.module';
 
 export type NotificationType =
   | 'ada_violation'
@@ -29,7 +29,7 @@ export interface CreateNotificationParams {
 
 @Injectable()
 export class NotificationsService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async findByUser(userId: string, unreadOnly = false) {
     const { notifications } = await import('@shared/lib/db/pg-schema');

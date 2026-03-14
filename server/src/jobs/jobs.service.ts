@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { eq, and } from 'drizzle-orm';
-import { DATABASE_TOKEN } from '../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../database/database.module';
 
 export type JobType =
   | 'run-dod-fmr-analysis'
@@ -30,7 +30,7 @@ export class JobsService {
   private readonly logger = new Logger(JobsService.name);
   private runningJobs = new Map<string, JobResult>();
 
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   /**
    * Enqueue a job for execution.

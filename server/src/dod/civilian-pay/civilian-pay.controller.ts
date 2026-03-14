@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { CivilianPayService } from './civilian-pay.service';
 import { CreateCivilianPayDto, UpdateCivilianPayDto } from './civilian-pay.dto';
 
@@ -23,8 +24,8 @@ export class CivilianPayController {
   @Get()
   @ApiOperation({ summary: 'List civilian pay records for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const records = await this.civilianPayService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const records = await this.civilianPayService.findByEngagement(engagementId, pagination);
     return { records };
   }
 

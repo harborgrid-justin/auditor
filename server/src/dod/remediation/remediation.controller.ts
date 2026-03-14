@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { RemediationService } from './remediation.service';
 import {
   CreateCAPDto,
@@ -26,8 +27,8 @@ export class RemediationController {
   @Get()
   @ApiOperation({ summary: 'List corrective action plans for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const caps = await this.remediationService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const caps = await this.remediationService.findByEngagement(engagementId, pagination);
     return { caps };
   }
 

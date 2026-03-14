@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { AppropriationsService } from './appropriations.service';
 import { CreateAppropriationDto, UpdateAppropriationDto } from './appropriations.dto';
 
@@ -23,8 +24,8 @@ export class AppropriationsController {
   @Get()
   @ApiOperation({ summary: 'List appropriations for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const appropriations = await this.appropriationsService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const appropriations = await this.appropriationsService.findByEngagement(engagementId, pagination);
     return { appropriations };
   }
 

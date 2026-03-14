@@ -1,7 +1,8 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import {
   CreateSpecialAccountDto,
   UpdateSpecialAccountDto,
@@ -10,7 +11,7 @@ import {
 
 @Injectable()
 export class SpecialAccountsService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async create(dto: CreateSpecialAccountDto) {
     const { specialAccounts } = await import('@shared/lib/db/pg-schema');
@@ -36,12 +37,26 @@ export class SpecialAccountsService {
     return this.findOne(id);
   }
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { specialAccounts } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(specialAccounts)
-      .where(eq(specialAccounts.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(specialAccounts)
+        .where(eq(specialAccounts.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(specialAccounts)
+        .where(eq(specialAccounts.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -77,7 +92,8 @@ export class SpecialAccountsService {
   }
 
   async runAnalysis(dto: RunSpecialAccountAnalysisDto) {
-    const accounts = await this.findByEngagement(dto.engagementId);
+    const accountsResult = await this.findByEngagement(dto.engagementId, { page: 1, limit: 100 });
+    const accounts = accountsResult.data;
     const fiscalYearAccounts = accounts.filter(
       (a: any) => a.fiscalYear === dto.fiscalYear,
     );

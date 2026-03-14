@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 import {
   CreateOrganizationDto,
   UpdateOrganizationDto,
@@ -15,7 +15,7 @@ import type { Organization } from '@shared/lib/engine/organization/hierarchy';
 export class OrganizationsService {
   private readonly hierarchyManager = new OrganizationHierarchyManager();
 
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async create(dto: CreateOrganizationDto) {
     const { organizations } = await import('@shared/lib/db/pg-schema');

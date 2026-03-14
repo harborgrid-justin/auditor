@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { ReimbursableService } from './reimbursable.service';
 import {
   CreateInteragencyAgreementDto,
@@ -27,8 +28,8 @@ export class ReimbursableController {
   @Get()
   @ApiOperation({ summary: 'List interagency agreements for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const agreements = await this.reimbursableService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const agreements = await this.reimbursableService.findByEngagement(engagementId, pagination);
     return { agreements };
   }
 

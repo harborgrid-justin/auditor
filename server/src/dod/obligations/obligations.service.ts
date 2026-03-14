@@ -1,19 +1,34 @@
 import { Injectable, Inject, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import { CreateObligationDto, UpdateObligationDto } from './obligations.dto';
 
 @Injectable()
 export class ObligationsService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { dodObligations } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(dodObligations)
-      .where(eq(dodObligations.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(dodObligations)
+        .where(eq(dodObligations.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(dodObligations)
+        .where(eq(dodObligations.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -138,5 +153,25 @@ export class ObligationsService {
     }
 
     return this.findOne(id);
+  }
+
+  async bulkCreate(dtos: CreateObligationDto[]) {
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < dtos.length; i++) {
+      try {
+        const result = await this.create(dtos[i]);
+        results.push(result);
+      } catch (err) {
+        errors.push({
+          index: i,
+          obligationNumber: dtos[i].obligationNumber,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return { created: results.length, failed: errors.length, obligations: results, errors };
   }
 }

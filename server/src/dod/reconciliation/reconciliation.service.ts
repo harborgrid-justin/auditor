@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 import {
   SubmitPurchaseOrderDto,
   SubmitReceiptDto,
@@ -19,7 +19,7 @@ export class ReconciliationService {
   private matchResults = new Map<string, any>();
   private suspenseItems = new Map<string, any>();
 
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async submitPO(dto: SubmitPurchaseOrderDto) {
     const id = uuid();

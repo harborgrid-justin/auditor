@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { IGTReconciliationService } from './igt-reconciliation.service';
 import {
   SubmitIGTTransactionDto,
@@ -27,8 +28,8 @@ export class IGTReconciliationController {
   @Get()
   @ApiOperation({ summary: 'List IGT transactions for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const transactions = await this.igtReconciliationService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const transactions = await this.igtReconciliationService.findByEngagement(engagementId, pagination);
     return { transactions };
   }
 

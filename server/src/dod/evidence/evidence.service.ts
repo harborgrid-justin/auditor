@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 import { GenerateEvidencePackageDto } from './evidence.dto';
 import {
   EvidencePackageGenerator,
@@ -12,7 +12,7 @@ export class EvidenceService {
   private readonly generator = new EvidencePackageGenerator();
   private readonly packages = new Map<string, any>();
 
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async generatePackage(dto: GenerateEvidencePackageDto, userId: string) {
     const { engagements, findings, auditLogs } = await import('@shared/lib/db/pg-schema');

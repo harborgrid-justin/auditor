@@ -1,7 +1,8 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import {
   CreateCAPDto,
   UpdateCAPStatusDto,
@@ -11,7 +12,7 @@ import {
 
 @Injectable()
 export class RemediationService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   private caps: Map<string, any> = new Map();
 
@@ -55,14 +56,20 @@ export class RemediationService {
     return cap;
   }
 
-  async findByEngagement(engagementId: string) {
-    const results: any[] = [];
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
+    const allResults: any[] = [];
     this.caps.forEach((cap) => {
       if (cap.engagementId === engagementId) {
-        results.push(cap);
+        allResults.push(cap);
       }
     });
-    return results;
+
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const total = allResults.length;
+    const items = allResults.slice((page - 1) * limit, page * limit);
+
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -126,9 +133,10 @@ export class RemediationService {
   }
 
   async getFIARStatus(dto: GetFIARStatusDto) {
-    const caps = await this.findByEngagement(dto.engagementId);
+    const capsResult = await this.findByEngagement(dto.engagementId, { page: 1, limit: 100 });
+    const caps = capsResult.data;
 
-    const totalCAPs = caps.length;
+    const totalCAPs = capsResult.meta.total;
     const completedCAPs = caps.filter((c: any) => c.status === 'completed' || c.status === 'validated').length;
     const activeCAPs = caps.filter((c: any) => !['completed', 'validated', 'draft'].includes(c.status)).length;
     const overdueCAPs = caps.filter((c: any) => c.status === 'overdue').length;
@@ -184,9 +192,10 @@ export class RemediationService {
   }
 
   async getRemediationDashboard(engagementId: string) {
-    const caps = await this.findByEngagement(engagementId);
+    const capsResult = await this.findByEngagement(engagementId, { page: 1, limit: 100 });
+    const caps = capsResult.data;
 
-    const total = caps.length;
+    const total = capsResult.meta.total;
     const active = caps.filter(
       (c: any) => ['active', 'on_track', 'at_risk'].includes(c.status),
     ).length;

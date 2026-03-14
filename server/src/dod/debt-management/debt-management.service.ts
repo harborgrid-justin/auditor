@@ -1,7 +1,8 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import {
   CreateDebtRecordDto,
   GenerateDemandLetterDto,
@@ -11,14 +12,28 @@ import {
 
 @Injectable()
 export class DebtManagementService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { debtDemandLetters } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(debtDemandLetters)
-      .where(eq(debtDemandLetters.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(debtDemandLetters)
+        .where(eq(debtDemandLetters.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(debtDemandLetters)
+        .where(eq(debtDemandLetters.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -117,7 +132,8 @@ export class DebtManagementService {
   }
 
   async getDebtAgingReport(engagementId: string) {
-    const debts = await this.findByEngagement(engagementId);
+    const result = await this.findByEngagement(engagementId, { page: 1, limit: 100 });
+    const debts = result.data;
     const now = new Date();
     const buckets = { current: 0, '1_30': 0, '31_60': 0, '61_90': 0, '91_120': 0, '120_plus': 0 };
 
@@ -136,14 +152,15 @@ export class DebtManagementService {
 
     return {
       engagementId,
-      totalDebts: debts.length,
+      totalDebts: result.meta.total,
       agingBuckets: buckets,
       generatedAt: new Date().toISOString(),
     };
   }
 
   async checkReferralDeadlines(engagementId: string) {
-    const debts = await this.findByEngagement(engagementId);
+    const result = await this.findByEngagement(engagementId, { page: 1, limit: 100 });
+    const debts = result.data;
     const now = new Date();
     const alerts: Array<{ debtId: string; daysDelinquent: number; daysUntilDeadline: number; status: string }> = [];
 

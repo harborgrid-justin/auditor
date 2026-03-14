@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { SpecialAccountsService } from './special-accounts.service';
 import {
   CreateSpecialAccountDto,
@@ -26,8 +27,8 @@ export class SpecialAccountsController {
   @Get()
   @ApiOperation({ summary: 'List special accounts for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const accounts = await this.specialAccountsService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const accounts = await this.specialAccountsService.findByEngagement(engagementId, pagination);
     return { accounts };
   }
 
