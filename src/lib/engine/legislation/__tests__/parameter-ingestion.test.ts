@@ -71,16 +71,17 @@ describe('Parameter Ingestion', () => {
       expect(errors).toHaveLength(0);
     });
 
-    it('accepts value at minimum boundary', () => {
-      // DOD_PER_DIEM_CONUS_MAX min is 100
-      const errors = validateIngestedParameter('DOD_PER_DIEM_CONUS_MAX', 100, 2025);
+    it('accepts value at minimum boundary when within change threshold', () => {
+      // DOD_PROMPT_PAY_INTEREST_RATE min is 0, current mock value is 0.05
+      const errors = validateIngestedParameter('DOD_PROMPT_PAY_INTEREST_RATE', 0, 2025);
 
       expect(errors).toHaveLength(0);
     });
 
-    it('accepts value at maximum boundary', () => {
-      // DOD_PER_DIEM_CONUS_MAX max is 500
-      const errors = validateIngestedParameter('DOD_PER_DIEM_CONUS_MAX', 500, 2025);
+    it('accepts value at maximum boundary when within change threshold', () => {
+      // DOD_PROMPT_PAY_INTEREST_RATE max is 0.20, maxChangePercent is 100%
+      // Current mock value is 0.05, so 0.10 (100% change) is allowed
+      const errors = validateIngestedParameter('DOD_PROMPT_PAY_INTEREST_RATE', 0.10, 2025);
 
       expect(errors).toHaveLength(0);
     });
