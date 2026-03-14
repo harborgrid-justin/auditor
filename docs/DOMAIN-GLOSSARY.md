@@ -1,0 +1,22 @@
+## Domain Glossary
+
+- **ADA**: Anti-Deficiency Act -- prohibits spending in excess of appropriations
+- **CAP**: Corrective Action Plan -- remediation plan for audit findings
+- **CUI**: Controlled Unclassified Information
+- **DFAS**: Defense Finance and Accounting Service
+- **DoD FMR**: Department of Defense Financial Management Regulation (7000.14-R)
+- **FASAB**: Federal Accounting Standards Advisory Board
+- **FFMIA**: Federal Financial Management Improvement Act
+- **FOUO**: For Official Use Only
+- **GAAP**: Generally Accepted Accounting Principles
+- **GTAS**: Governmentwide Treasury Account Symbol
+- **IGT**: Intragovernmental Transactions
+- **NFE**: Notice of Findings and Recommendations
+- **PCAOB**: Public Company Accounting Oversight Board
+- **SBR**: Statement of Budgetary Resources
+- **SF-132/133**: Standard Forms for budget apportionment/execution
+- **SoD**: Separation of Duties
+- **SOX**: Sarbanes-Oxley Act
+- **SUD**: Summary of Unadjusted Differences
+- **USSGL**: United States Standard General Ledger
+- **UTP**: Uncertain Tax Positions

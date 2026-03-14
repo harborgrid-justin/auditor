@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && npx next lint --fix --quiet --file \"$(echo $TOOL_INPUT | jq -r '.file_path // empty' 2>/dev/null)\" 2>/dev/null; exit 0",
+            "timeout": 15000
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(DROP TABLE)",
+      "Bash(DROP DATABASE)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
+    ]
+  }
+}
