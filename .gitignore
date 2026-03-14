@@ -27,3 +27,11 @@ next-env.d.ts
 *.db
 *.db-shm
 *.db-wal
+
+# build artifacts
+server/dist/
+server/jest.config.js
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+!src/**/*.test.ts
