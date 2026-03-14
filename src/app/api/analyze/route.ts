@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       const iaaRecords = db.select().from(schema.interagencyAgreements).where(eq(schema.interagencyAgreements.engagementId, engagementId)).all();
       const igtRecords = db.select().from(schema.intragovernmentalTransactions).where(eq(schema.intragovernmentalTransactions.engagementId, engagementId)).all();
       const wcfRecords = db.select().from(schema.workingCapitalFunds).where(eq(schema.workingCapitalFunds.engagementId, engagementId)).all();
-      const specAccts = db.select().from(schema.specialAccountsTable).where(eq(schema.specialAccountsTable.engagementId, engagementId)).all();
+      const specAccts = db.select().from(schema.specialAccounts).where(eq(schema.specialAccounts.engagementId, engagementId)).all();
       const nafAccts = db.select().from(schema.nafAccounts).where(eq(schema.nafAccounts.engagementId, engagementId)).all();
       const adaViols = db.select().from(schema.adaViolations).where(eq(schema.adaViolations.engagementId, engagementId)).all();
       const fiarRecs = db.select().from(schema.fiarAssessments).where(eq(schema.fiarAssessments.engagementId, engagementId)).all();

@@ -13,6 +13,10 @@
  *   - Debt referral deadline proximity
  */
 
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('Alerting');
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -205,7 +209,7 @@ let activeRules: AlertRule[] = [...DEFAULT_ALERT_RULES];
  */
 export function setAlertRules(rules: AlertRule[]): void {
   activeRules = [...rules];
-  console.info(`[alerting] ${activeRules.length} alert rule(s) loaded.`);
+  logger.log(`${activeRules.length} alert rule(s) loaded.`);
 }
 
 /**
@@ -213,7 +217,7 @@ export function setAlertRules(rules: AlertRule[]): void {
  */
 export function addAlertRule(rule: AlertRule): void {
   activeRules.push(rule);
-  console.info(`[alerting] Rule "${rule.id}" added.`);
+  logger.log(`Rule "${rule.id}" added.`);
 }
 
 /**
@@ -223,7 +227,7 @@ export function removeAlertRule(ruleId: string): boolean {
   const before = activeRules.length;
   activeRules = activeRules.filter((r) => r.id !== ruleId);
   const removed = activeRules.length < before;
-  if (removed) console.info(`[alerting] Rule "${ruleId}" removed.`);
+  if (removed) logger.log(`Rule "${ruleId}" removed.`);
   return removed;
 }
 
@@ -255,12 +259,12 @@ export async function evaluateAlertRules(event: AlertEvent): Promise<TriggeredAl
     try {
       if (!rule.condition(event)) continue;
     } catch (err) {
-      console.error(`[alerting] Error evaluating condition for rule "${rule.id}":`, err);
+      logger.error(`Error evaluating condition for rule "${rule.id}": ${err}`);
       continue;
     }
 
     if (isCoolingDown(rule, event)) {
-      console.debug(`[alerting] Rule "${rule.id}" skipped – cooling down.`);
+      logger.debug(`Rule "${rule.id}" skipped – cooling down.`);
       continue;
     }
 
@@ -297,9 +301,8 @@ export async function triggerAlert(
 
   const dispatches = rule.channels.map((channel) =>
     dispatchToChannel(channel, rule, alert).catch((err) => {
-      console.error(
-        `[alerting] Failed to dispatch rule "${rule.id}" to channel "${channel}":`,
-        err,
+      logger.error(
+        `Failed to dispatch rule "${rule.id}" to channel "${channel}": ${err}`,
       );
     }),
   );
@@ -333,35 +336,35 @@ async function dispatchToChannel(
       break;
     default: {
       const _exhaustive: never = channel;
-      console.warn(`[alerting] Unknown channel: ${_exhaustive}`);
+      logger.warn(`Unknown channel: ${_exhaustive}`);
     }
   }
 }
 
 function dispatchConsole(_rule: AlertRule, alert: TriggeredAlert): void {
-  const label = `[ALERT][${alert.severity.toUpperCase()}]`;
-  console.warn(`${label} ${alert.ruleName} — ${_rule.description}`);
-  console.warn(`${label} Event: ${JSON.stringify(alert.event)}`);
+  const label = `[${alert.severity.toUpperCase()}]`;
+  logger.warn(`${label} ${alert.ruleName} — ${_rule.description}`);
+  logger.warn(`${label} Event: ${JSON.stringify(alert.event)}`);
 }
 
 async function dispatchEmail(rule: AlertRule, alert: TriggeredAlert): Promise<void> {
   // Integration point: plug in an SMTP or SES client.
-  console.info(
-    `[alerting:email] Would send email for rule "${rule.id}" (severity=${alert.severity}).`,
+  logger.log(
+    `[email] Would send email for rule "${rule.id}" (severity=${alert.severity}).`,
   );
 }
 
 async function dispatchSms(rule: AlertRule, alert: TriggeredAlert): Promise<void> {
   // Integration point: plug in Twilio, SNS, or equivalent.
-  console.info(
-    `[alerting:sms] Would send SMS for rule "${rule.id}" (severity=${alert.severity}).`,
+  logger.log(
+    `[sms] Would send SMS for rule "${rule.id}" (severity=${alert.severity}).`,
   );
 }
 
 async function dispatchWebhook(rule: AlertRule, alert: TriggeredAlert): Promise<void> {
   const webhookUrl = process.env.ALERT_WEBHOOK_URL;
   if (!webhookUrl) {
-    console.debug('[alerting:webhook] ALERT_WEBHOOK_URL not configured – skipping.');
+    logger.debug('ALERT_WEBHOOK_URL not configured – skipping.');
     return;
   }
 
@@ -381,5 +384,5 @@ async function dispatchWebhook(rule: AlertRule, alert: TriggeredAlert): Promise<
  */
 export function resetCooldowns(): void {
   cooldownMap.clear();
-  console.info('[alerting] Cooldown tracker reset.');
+  logger.log('Cooldown tracker reset.');
 }

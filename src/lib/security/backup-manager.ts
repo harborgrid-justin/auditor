@@ -276,8 +276,9 @@ export class BackupManager {
       // Step 3: Compute SHA-256 checksum
       const checksum = createHash('sha256').update(encryptedData).digest('hex');
 
-      // Step 4: Write to storage
-      // TODO: Production: await fs.promises.writeFile(filePath, encryptedData, { mode: 0o600 });
+      // Step 4: Write encrypted backup to storage with restricted permissions
+      await fs.promises.mkdir(require('path').dirname(filePath), { recursive: true, mode: 0o700 });
+      await fs.promises.writeFile(filePath, encryptedData, { mode: 0o600 });
 
       // Update record
       record.status = 'completed';
@@ -338,7 +339,7 @@ export class BackupManager {
     const checksum = createHash('sha256').update(encryptedData).digest('hex');
 
     const encryptedPath = `${backupPath}.enc`;
-    // TODO: Production: fs.writeFileSync(encryptedPath, encryptedData, { mode: 0o600 });
+    fs.writeFileSync(encryptedPath, encryptedData, { mode: 0o600 });
 
     return { encryptedPath, checksum };
   }
@@ -363,9 +364,7 @@ export class BackupManager {
     backupPath: string,
     checksum: string,
   ): { valid: boolean; expectedChecksum: string; actualChecksum: string; reason: string } {
-    // TODO: Production: const fileData = fs.readFileSync(backupPath);
-    // Placeholder: compute checksum of empty buffer
-    const fileData = Buffer.alloc(0);
+    const fileData = fs.readFileSync(backupPath);
     const actualChecksum = createHash('sha256').update(fileData).digest('hex');
 
     const valid = actualChecksum === checksum;
@@ -699,21 +698,90 @@ export class BackupManager {
   /**
    * Execute a PostgreSQL database dump.
    *
-   * In production, invokes pg_dump (full) or pg_receivewal (incremental).
+   * Invokes pg_dump (full) or pg_basebackup (incremental) via child_process
+   * with streaming output and error handling.
    *
-   * TODO: Implement actual pg_dump / pg_basebackup invocation via
-   *       child_process.execFile with streaming and error handling.
+   * @see NIST SP 800-53 CP-9: Information System Backup
    */
   private async executeDump(type: 'full' | 'incremental'): Promise<Buffer> {
-    // Placeholder for interface testing
-    return Buffer.from(
-      JSON.stringify({
-        type,
-        timestamp: new Date().toISOString(),
-        database: this.extractDatabaseName(),
-        placeholder: true,
-      }),
-    );
+    const { execFile } = require('child_process') as typeof import('child_process');
+    const url = new URL(this.config.databaseUrl);
+    const host = url.hostname || 'localhost';
+    const port = url.port || '5432';
+    const dbName = url.pathname.replace('/', '') || 'auditpro';
+    const user = url.username || 'auditpro';
+
+    const env = {
+      ...process.env,
+      PGPASSWORD: url.password || process.env.DB_PASSWORD || '',
+    };
+
+    return new Promise<Buffer>((resolve, reject) => {
+      if (type === 'full') {
+        // pg_dump with custom format for compression and selective restore
+        const args = [
+          '-h', host,
+          '-p', port,
+          '-U', user,
+          '-Fc',              // custom format (compressed)
+          '--no-owner',
+          '--no-privileges',
+          dbName,
+        ];
+
+        const child = execFile('pg_dump', args, {
+          encoding: 'buffer',
+          maxBuffer: 1024 * 1024 * 512, // 512MB max
+          env,
+        }, (error: Error | null, stdout: Buffer) => {
+          if (error) {
+            reject(new Error(`pg_dump failed: ${error.message}`));
+            return;
+          }
+          resolve(stdout);
+        });
+
+        child.on('error', (err: Error) => {
+          reject(new Error(`pg_dump spawn failed: ${err.message}`));
+        });
+      } else {
+        // Incremental: use pg_basebackup with WAL streaming
+        const backupDir = require('path').join(
+          require('os').tmpdir(),
+          `auditpro_incremental_${Date.now()}`,
+        );
+        const args = [
+          '-h', host,
+          '-p', port,
+          '-U', user,
+          '-D', backupDir,
+          '--wal-method=stream',
+          '--checkpoint=fast',
+          '--format=tar',
+        ];
+
+        execFile('pg_basebackup', args, {
+          encoding: 'buffer',
+          maxBuffer: 1024 * 1024 * 1024, // 1GB max
+          env,
+        }, async (error: Error | null) => {
+          if (error) {
+            reject(new Error(`pg_basebackup failed: ${error.message}`));
+            return;
+          }
+          try {
+            // Read the tar output from the backup directory
+            const tarPath = require('path').join(backupDir, 'base.tar');
+            const data = fs.readFileSync(tarPath);
+            // Clean up temp directory
+            fs.rmSync(backupDir, { recursive: true, force: true });
+            resolve(data);
+          } catch (readErr) {
+            reject(new Error(`Failed to read incremental backup: ${(readErr as Error).message}`));
+          }
+        });
+      }
+    });
   }
 
   /**

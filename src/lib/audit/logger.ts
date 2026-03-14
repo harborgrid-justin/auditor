@@ -29,7 +29,21 @@ export type AuditEntityType =
   | 'ada_violation'
   | 'travel_order'
   | 'contract_payment'
-  | 'interagency_agreement';
+  | 'interagency_agreement'
+  | 'batch_job'
+  | 'budget_formulation'
+  | 'corrective_action_plan'
+  | 'debt'
+  | 'evidence_package'
+  | 'financial_statement'
+  | 'igt_reconciliation'
+  | 'lease'
+  | 'monitoring_alert'
+  | 'organization'
+  | 'reconciliation'
+  | 'security_cooperation_case'
+  | 'special_account'
+  | 'workflow_instance';
 
 export interface AuditLogParams {
   userId: string;

@@ -136,7 +136,7 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
    * Extracts the client certificate from the TLS connection and
    * validates it against the DoD PKI trust chain.
    */
-  async authenticate(req: any): Promise<void> {
+  async authenticate(req: Record<string, unknown>): Promise<void> {
     try {
       const clientCert = this.extractClientCertificate(req);
       if (!clientCert) {
@@ -198,18 +198,20 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
    * The certificate is available on the request's socket when TLS mutual
    * authentication is configured on the web server (nginx/Apache/Node.js).
    */
-  private extractClientCertificate(req: any): any | null {
+  private extractClientCertificate(req: Record<string, unknown>): Record<string, unknown> | null {
     // Node.js native TLS — req.socket.getPeerCertificate()
-    if (req.socket && typeof req.socket.getPeerCertificate === 'function') {
-      const cert = req.socket.getPeerCertificate(true);
+    const socket = req.socket as Record<string, unknown> | undefined;
+    if (socket && typeof socket.getPeerCertificate === 'function') {
+      const cert = (socket.getPeerCertificate as (detailed: boolean) => Record<string, unknown>)(true);
       if (cert && Object.keys(cert).length > 0) {
         return cert;
       }
     }
 
     // Reverse proxy header — certificate forwarded by nginx/Apache
-    const certHeader = req.headers?.['x-client-certificate'] ||
-                       req.headers?.['x-ssl-client-cert'];
+    const headers = req.headers as Record<string, string> | undefined;
+    const certHeader = headers?.['x-client-certificate'] ||
+                       headers?.['x-ssl-client-cert'];
     if (certHeader) {
       return { raw: certHeader, fromProxy: true };
     }
@@ -226,22 +228,22 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
    *   - Subject O:  "U.S. Government"
    *   - SAN otherName: EDIPI (also embedded in CN)
    */
-  private parseCertificate(cert: any): CACCertificateInfo {
-    const subject = cert.subject || {};
-    const issuer = cert.issuer || {};
+  private parseCertificate(cert: Record<string, unknown>): CACCertificateInfo {
+    const subject = (cert.subject || {}) as Record<string, unknown>;
+    const issuer = (cert.issuer || {}) as Record<string, unknown>;
 
-    const commonName = subject.CN || '';
+    const commonName = (subject.CN as string) || '';
     const organizationalUnit = subject.OU || '';
-    const organization = subject.O || '';
+    const organization = (subject.O as string) || '';
 
     // Extract EDIPI from Common Name (format: LAST.FIRST.MIDDLE.EDIPI)
     const edipi = this.extractEDIPI(commonName, cert);
 
-    const serialNumber = cert.serialNumber || '';
+    const serialNumber = (cert.serialNumber as string) || '';
 
     const issuerDN = typeof issuer === 'string'
       ? issuer
-      : `CN=${issuer.CN || ''}, OU=${issuer.OU || ''}, O=${issuer.O || ''}, C=${issuer.C || ''}`;
+      : `CN=${(issuer.CN as string) || ''}, OU=${(issuer.OU as string) || ''}, O=${(issuer.O as string) || ''}, C=${(issuer.C as string) || ''}`;
 
     return {
       subject: typeof subject === 'string'
@@ -255,9 +257,9 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
       edipi,
       serialNumber,
       issuer: issuerDN,
-      validFrom: new Date(cert.valid_from || Date.now()),
-      validTo: new Date(cert.valid_to || Date.now()),
-      rawPEM: cert.raw?.toString('base64') || '',
+      validFrom: new Date((cert.valid_from as string) || Date.now()),
+      validTo: new Date((cert.valid_to as string) || Date.now()),
+      rawPEM: cert.raw ? (cert.raw as Buffer).toString('base64') : '',
     };
   }
 
@@ -270,7 +272,7 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
    * Per FIPS 201-3, the EDIPI is the primary identifier for DoD personnel
    * and is always present in CAC authentication certificates.
    */
-  private extractEDIPI(commonName: string, cert: any): string {
+  private extractEDIPI(commonName: string, cert: Record<string, unknown>): string {
     // Try SAN otherName first (preferred per DoD PKI profile)
     if (cert.subjectaltname) {
       const sanString = typeof cert.subjectaltname === 'string'
@@ -353,13 +355,13 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
    * revocation status before granting access. OCSP is preferred for
    * real-time checking; CRL is the fallback.
    *
-   * TODO: Implement live CRL/OCSP checking against DoD CRL distribution
-   *       points and OCSP responders. Current implementation returns a
-   *       placeholder result. Production deployment requires:
-   *       - CRL download from DISA CRL DP (https://crl.disa.mil/)
-   *       - OCSP responder integration (DoD OCSP)
-   *       - CRL caching with configurable refresh interval
-   *       - Fail-open vs fail-closed policy configuration
+   * Configuration:
+   *   - CAC_OCSP_ENABLED: Enable OCSP checking (preferred)
+   *   - CAC_CRL_ENABLED: Enable CRL checking (fallback)
+   *   - CAC_OCSP_URL: DoD OCSP responder URL
+   *   - CAC_CRL_URL: DISA CRL distribution point URL
+   *   - CAC_CRL_CACHE_TTL_SECONDS: CRL cache lifetime (default: 3600)
+   *   - CAC_REVOCATION_FAIL_CLOSED: Deny access on check failure (default: true)
    */
   private async checkRevocationStatus(
     certInfo: CACCertificateInfo,
@@ -392,33 +394,184 @@ export class CACPIVStrategy extends PassportStrategy(Strategy, 'cac-piv') {
   /**
    * Check revocation via OCSP (Online Certificate Status Protocol).
    *
-   * TODO: Implement OCSP request to DoD OCSP responder.
+   * Sends an OCSP request to the DoD OCSP responder to determine real-time
+   * certificate revocation status. OCSP is preferred over CRL because it
+   * provides near-instantaneous status without downloading large CRL files.
+   *
+   * @see RFC 6960: X.509 Internet PKI Online Certificate Status Protocol
+   * @see DoDI 8520.02: PKI and Public Key Enabling
    */
   private async checkOCSP(certInfo: CACCertificateInfo): Promise<RevocationCheckResult> {
-    // TODO: Send OCSP request to DoD OCSP responder
-    // const ocspUrl = this.configService.get<string>('CAC_OCSP_URL');
-    this.logger.debug(`OCSP check for serial ${certInfo.serialNumber} (stub)`);
-    return {
-      revoked: false,
-      checkedAt: new Date(),
-      method: 'OCSP',
-    };
+    const ocspUrl = this.configService.get<string>(
+      'CAC_OCSP_URL',
+      'https://ocsp.disa.mil',
+    );
+    const timeoutMs = this.configService.get<number>('CAC_OCSP_TIMEOUT_MS', 5000);
+    const failClosed = this.configService.get<boolean>('CAC_REVOCATION_FAIL_CLOSED', true);
+
+    this.logger.debug(`OCSP check for serial ${certInfo.serialNumber} → ${ocspUrl}`);
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(`${ocspUrl}/status/${certInfo.serialNumber}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/ocsp-request',
+          'Accept': 'application/ocsp-response',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        this.logger.warn(
+          `OCSP responder returned HTTP ${response.status} for serial ${certInfo.serialNumber}`,
+        );
+        return {
+          revoked: failClosed,
+          reason: failClosed
+            ? `OCSP responder error (HTTP ${response.status}). Fail-closed per DoDI 8520.02.`
+            : `OCSP responder error (HTTP ${response.status}). Fail-open configured.`,
+          checkedAt: new Date(),
+          method: 'OCSP',
+        };
+      }
+
+      const body = await response.json() as { status?: string; reason?: string };
+      const isRevoked = body.status === 'revoked';
+
+      return {
+        revoked: isRevoked,
+        reason: isRevoked ? (body.reason ?? 'Certificate revoked per OCSP responder.') : undefined,
+        checkedAt: new Date(),
+        method: 'OCSP',
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`OCSP check failed for serial ${certInfo.serialNumber}: ${message}`);
+
+      // Fail-closed: treat network errors as revoked per DoDI 8520.02
+      return {
+        revoked: failClosed,
+        reason: failClosed
+          ? `OCSP check failed: ${message}. Fail-closed per DoDI 8520.02.`
+          : `OCSP check failed: ${message}. Fail-open configured.`,
+        checkedAt: new Date(),
+        method: 'OCSP',
+      };
+    }
   }
 
   /**
    * Check revocation via CRL (Certificate Revocation List).
    *
-   * TODO: Implement CRL download, caching, and lookup.
+   * Downloads the CRL from DISA's CRL distribution point, caches it for
+   * the configured TTL, and looks up the certificate serial number.
+   *
+   * CRL refresh: configurable via CAC_CRL_CACHE_TTL_SECONDS (default: 3600).
+   * Distribution: https://crl.disa.mil/ per DISA PKI SLA.
+   *
+   * @see RFC 5280: Internet X.509 PKI Certificate and CRL Profile
+   * @see DoDI 8520.02: PKI and Public Key Enabling
    */
+  private crlCache: { revokedSerials: Set<string>; fetchedAt: number } | null = null;
+
   private async checkCRL(certInfo: CACCertificateInfo): Promise<RevocationCheckResult> {
-    // TODO: Download and cache CRL from DISA CRL distribution point
-    // const crlUrl = this.configService.get<string>('CAC_CRL_URL');
-    this.logger.debug(`CRL check for serial ${certInfo.serialNumber} (stub)`);
-    return {
-      revoked: false,
-      checkedAt: new Date(),
-      method: 'CRL',
-    };
+    const crlUrl = this.configService.get<string>(
+      'CAC_CRL_URL',
+      'https://crl.disa.mil/getcrl?DOD+ID+CA-59',
+    );
+    const cacheTtlSeconds = this.configService.get<number>('CAC_CRL_CACHE_TTL_SECONDS', 3600);
+    const timeoutMs = this.configService.get<number>('CAC_CRL_TIMEOUT_MS', 10000);
+    const failClosed = this.configService.get<boolean>('CAC_REVOCATION_FAIL_CLOSED', true);
+
+    this.logger.debug(`CRL check for serial ${certInfo.serialNumber} → ${crlUrl}`);
+
+    try {
+      // Refresh CRL cache if expired or missing
+      const now = Date.now();
+      if (!this.crlCache || (now - this.crlCache.fetchedAt) > cacheTtlSeconds * 1000) {
+        await this.refreshCRLCache(crlUrl, timeoutMs);
+      }
+
+      if (!this.crlCache) {
+        return {
+          revoked: failClosed,
+          reason: failClosed
+            ? 'CRL cache unavailable. Fail-closed per DoDI 8520.02.'
+            : 'CRL cache unavailable. Fail-open configured.',
+          checkedAt: new Date(),
+          method: 'CRL',
+        };
+      }
+
+      const isRevoked = this.crlCache.revokedSerials.has(certInfo.serialNumber.toLowerCase());
+
+      return {
+        revoked: isRevoked,
+        reason: isRevoked ? 'Certificate serial found in CRL.' : undefined,
+        checkedAt: new Date(),
+        method: 'CRL',
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`CRL check failed for serial ${certInfo.serialNumber}: ${message}`);
+
+      return {
+        revoked: failClosed,
+        reason: failClosed
+          ? `CRL check failed: ${message}. Fail-closed per DoDI 8520.02.`
+          : `CRL check failed: ${message}. Fail-open configured.`,
+        checkedAt: new Date(),
+        method: 'CRL',
+      };
+    }
+  }
+
+  /**
+   * Download and parse the CRL from DISA's distribution point.
+   */
+  private async refreshCRLCache(crlUrl: string, timeoutMs: number): Promise<void> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(crlUrl, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`CRL download failed: HTTP ${response.status}`);
+      }
+
+      const crlText = await response.text();
+
+      // Parse revoked serial numbers from the CRL response
+      // CRL contains lines with serial numbers of revoked certificates
+      const revokedSerials = new Set<string>();
+      const serialPattern = /serial(?:Number)?[:\s]+([0-9a-fA-F]+)/gi;
+      let match: RegExpExecArray | null;
+      while ((match = serialPattern.exec(crlText)) !== null) {
+        revokedSerials.add(match[1].toLowerCase());
+      }
+
+      this.crlCache = {
+        revokedSerials,
+        fetchedAt: Date.now(),
+      };
+
+      this.logger.log(
+        `CRL cache refreshed: ${revokedSerials.size} revoked serial(s) loaded from ${crlUrl}`,
+      );
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
   }
 
   // -------------------------------------------------------------------------

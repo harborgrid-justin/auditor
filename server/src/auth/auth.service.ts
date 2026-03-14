@@ -1,10 +1,11 @@
-import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { eq } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../database/database.module';
+import { createClient, RedisClientType } from 'redis';
 
 interface JwtPayload {
   sub: string;
@@ -20,12 +21,16 @@ interface UserRecord {
   role: string;
 }
 
-/** In-memory refresh token store. Production should use Redis or DB. */
-const refreshTokenStore = new Map<string, { userId: string; expiresAt: number }>();
+const REFRESH_TOKEN_PREFIX = 'refresh_token:';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly refreshTokenTtlMs: number;
+  private readonly refreshTokenTtlSeconds: number;
+  private redis: RedisClientType | null = null;
+  /** Fallback in-memory store when Redis is unavailable. */
+  private readonly fallbackStore = new Map<string, { userId: string; expiresAt: number }>();
 
   constructor(
     @Inject(DATABASE_TOKEN) private readonly db: unknown,
@@ -33,6 +38,27 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {
     this.refreshTokenTtlMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+    this.refreshTokenTtlSeconds = 7 * 24 * 60 * 60;
+    this.initRedis();
+  }
+
+  private async initRedis(): Promise<void> {
+    const redisHost = this.configService.get<string>('REDIS_HOST', 'localhost');
+    const redisPort = this.configService.get<number>('REDIS_PORT', 6379);
+
+    try {
+      this.redis = createClient({ url: `redis://${redisHost}:${redisPort}` });
+      this.redis.on('error', (err: Error) => {
+        this.logger.warn(`Redis connection error (falling back to memory): ${err.message}`);
+      });
+      await this.redis.connect();
+      this.logger.log(`Refresh token store connected to Redis at ${redisHost}:${redisPort}`);
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Redis unavailable for refresh tokens (using in-memory fallback): ${err instanceof Error ? err.message : String(err)}`,
+      );
+      this.redis = null;
+    }
   }
 
   async validateUser(email: string, password: string): Promise<UserRecord> {
@@ -67,7 +93,7 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
-    const refreshToken = this.generateRefreshToken(user.id);
+    const refreshToken = await this.generateRefreshToken(user.id);
 
     return {
       access_token: accessToken,
@@ -109,24 +135,19 @@ export class AuthService {
   }
 
   async refreshAccessToken(refreshToken: string) {
-    const stored = refreshTokenStore.get(refreshToken);
+    const userId = await this.getRefreshToken(refreshToken);
 
-    if (!stored) {
+    if (!userId) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    if (Date.now() > stored.expiresAt) {
-      refreshTokenStore.delete(refreshToken);
-      throw new UnauthorizedException('Refresh token expired');
-    }
-
     // Revoke old refresh token (rotation)
-    refreshTokenStore.delete(refreshToken);
+    await this.deleteRefreshToken(refreshToken);
 
     // Look up user
     const { users } = await import('@shared/lib/db/pg-schema');
     const typedDb = this.db as import('drizzle-orm/node-postgres').NodePgDatabase;
-    const results = await typedDb.select().from(users).where(eq(users.id, stored.userId));
+    const results = await typedDb.select().from(users).where(eq(users.id, userId));
     const user = results[0] as Record<string, unknown> | undefined;
 
     if (!user) {
@@ -141,12 +162,50 @@ export class AuthService {
     });
   }
 
-  private generateRefreshToken(userId: string): string {
+  private async generateRefreshToken(userId: string): Promise<string> {
     const token = crypto.randomBytes(48).toString('hex');
-    refreshTokenStore.set(token, {
-      userId,
-      expiresAt: Date.now() + this.refreshTokenTtlMs,
-    });
+    await this.storeRefreshToken(token, userId);
     return token;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Redis-backed refresh token storage with in-memory fallback
+  // ---------------------------------------------------------------------------
+
+  private async storeRefreshToken(token: string, userId: string): Promise<void> {
+    if (this.redis?.isReady) {
+      await this.redis.setEx(
+        `${REFRESH_TOKEN_PREFIX}${token}`,
+        this.refreshTokenTtlSeconds,
+        userId,
+      );
+    } else {
+      this.fallbackStore.set(token, {
+        userId,
+        expiresAt: Date.now() + this.refreshTokenTtlMs,
+      });
+    }
+  }
+
+  private async getRefreshToken(token: string): Promise<string | null> {
+    if (this.redis?.isReady) {
+      return this.redis.get(`${REFRESH_TOKEN_PREFIX}${token}`);
+    }
+
+    const stored = this.fallbackStore.get(token);
+    if (!stored) return null;
+    if (Date.now() > stored.expiresAt) {
+      this.fallbackStore.delete(token);
+      return null;
+    }
+    return stored.userId;
+  }
+
+  private async deleteRefreshToken(token: string): Promise<void> {
+    if (this.redis?.isReady) {
+      await this.redis.del(`${REFRESH_TOKEN_PREFIX}${token}`);
+    } else {
+      this.fallbackStore.delete(token);
+    }
   }
 }

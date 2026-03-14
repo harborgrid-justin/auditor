@@ -26,5 +26,8 @@ export const config = {
     '/api/templates/:path*',
     '/api/schedules/:path*',
     '/api/portal/:path*',
+    '/api/dod/:path*',
+    '/api/legislation/:path*',
+    '/api/tax-parameters/:path*',
   ],
 };

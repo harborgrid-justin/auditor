@@ -39,6 +39,9 @@ import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { Logger } from '@nestjs/common';
+
+const otelLogger = new Logger('OpenTelemetry');
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,7 +89,7 @@ let initialized = false;
  */
 export function initTracing(config: TracingConfig): NodeTracerProvider {
   if (initialized && tracerProvider) {
-    console.warn('[otel] Tracing is already initialized – returning existing provider.');
+    otelLogger.warn('Tracing is already initialized – returning existing provider.');
     return tracerProvider;
   }
 
@@ -116,7 +119,7 @@ export function initTracing(config: TracingConfig): NodeTracerProvider {
     tracerProvider.addSpanProcessor(
       new SimpleSpanProcessor(new ConsoleSpanExporter()),
     );
-    console.info('[otel] Console span exporter enabled.');
+    otelLogger.log('Console span exporter enabled.');
   } else {
     try {
       const otlpExporter = new OTLPTraceExporter({ url: otlpEndpoint });
@@ -126,9 +129,9 @@ export function initTracing(config: TracingConfig): NodeTracerProvider {
           maxExportBatchSize,
         }),
       );
-      console.info(`[otel] OTLP exporter configured → ${otlpEndpoint}`);
+      otelLogger.log(`OTLP exporter configured → ${otlpEndpoint}`);
     } catch (err) {
-      console.warn('[otel] Failed to create OTLP exporter – falling back to console.', err);
+      otelLogger.warn(`Failed to create OTLP exporter – falling back to console: ${err}`);
       tracerProvider.addSpanProcessor(
         new SimpleSpanProcessor(new ConsoleSpanExporter()),
       );
@@ -152,7 +155,7 @@ export function initTracing(config: TracingConfig): NodeTracerProvider {
   defaultTracer = trace.getTracer(serviceName, serviceVersion);
   initialized = true;
 
-  console.info(`[otel] Tracing initialized for service "${serviceName}" (${environment}).`);
+  otelLogger.log(`Tracing initialized for service "${serviceName}" (${environment}).`);
   return tracerProvider;
 }
 
@@ -239,7 +242,7 @@ export function getSpanId(): string | undefined {
  */
 export function getTracer(): Tracer {
   if (defaultTracer) return defaultTracer;
-  console.warn('[otel] Tracer requested before initTracing() – returning no-op tracer.');
+  otelLogger.warn('Tracer requested before initTracing() – returning no-op tracer.');
   return trace.getTracer('dod-audit-noop');
 }
 
@@ -261,10 +264,10 @@ export function getTracerProvider(): NodeTracerProvider | null {
  */
 export async function shutdownTracing(): Promise<void> {
   if (!tracerProvider) return;
-  console.info('[otel] Shutting down tracer provider…');
+  otelLogger.log('Shutting down tracer provider…');
   await tracerProvider.shutdown();
   tracerProvider = null;
   defaultTracer = null;
   initialized = false;
-  console.info('[otel] Tracer provider shut down.');
+  otelLogger.log('Tracer provider shut down.');
 }

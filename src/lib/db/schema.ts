@@ -168,7 +168,7 @@ export const auditLogs = sqliteTable('audit_logs', {
   userId: text('user_id').notNull(),
   userName: text('user_name').notNull(),
   action: text('action', { enum: ['create', 'read', 'update', 'delete', 'analyze', 'export', 'upload', 'login', 'logout'] }).notNull(),
-  entityType: text('entity_type', { enum: ['engagement', 'finding', 'control', 'file', 'journal_entry', 'user', 'template', 'schedule', 'signoff', 'workpaper', 'appropriation', 'obligation', 'disbursement', 'ada_violation', 'travel_order', 'contract_payment', 'interagency_agreement'] }).notNull(),
+  entityType: text('entity_type', { enum: ['engagement', 'finding', 'control', 'file', 'journal_entry', 'user', 'template', 'schedule', 'signoff', 'workpaper', 'appropriation', 'obligation', 'disbursement', 'ada_violation', 'travel_order', 'contract_payment', 'interagency_agreement', 'batch_job', 'budget_formulation', 'corrective_action_plan', 'debt', 'evidence_package', 'financial_statement', 'igt_reconciliation', 'lease', 'monitoring_alert', 'organization', 'reconciliation', 'security_cooperation_case', 'special_account', 'workflow_instance'] }).notNull(),
   entityId: text('entity_id'),
   details: text('details'),
   ipAddress: text('ip_address'),
@@ -870,7 +870,7 @@ export const workingCapitalFunds = sqliteTable('working_capital_funds', {
   fiscalYear: integer('fiscal_year').notNull(),
 });
 
-export const specialAccountsTable = sqliteTable('special_accounts', {
+export const specialAccounts = sqliteTable('special_accounts', {
   id: text('id').primaryKey(),
   engagementId: text('engagement_id').notNull().references(() => engagements.id),
   accountType: text('account_type', {
@@ -1015,20 +1015,7 @@ export const approvalSteps = sqliteTable('approval_steps', {
 // Phase 7: Enterprise Feature Database Tables
 // ============================================================
 
-// --- Rule Version Registry (Phase 1.1) ---
-
-export const ruleVersionsTable = sqliteTable('rule_versions', {
-  id: text('id').primaryKey(),
-  ruleId: text('rule_id').notNull(),
-  version: integer('version').notNull(),
-  contentJson: text('content_json').notNull(),
-  effectiveDate: text('effective_date').notNull(),
-  sunsetDate: text('sunset_date'),
-  changedBy: text('changed_by').notNull(),
-  changeReason: text('change_reason').notNull(),
-  legislationId: text('legislation_id'),
-  createdAt: text('created_at').notNull(),
-});
+// (ruleVersions table defined above at line 968)
 
 // --- Legislative Changes (Phase 1.2) ---
 
@@ -1239,4 +1226,258 @@ export const contractCloseouts = sqliteTable('contract_closeouts', {
   checklistJson: text('checklist_json'), // Full checklist state
   deobligatedAmount: real('deobligated_amount'),
   createdAt: text('created_at').notNull(),
+});
+
+// --- Enterprise Extension Tables ---
+
+export const organizations = sqliteTable('organizations', {
+  id: text('id').primaryKey(),
+  parentId: text('parent_id'),
+  code: text('code').notNull(),
+  name: text('name').notNull(),
+  abbreviation: text('abbreviation').notNull(),
+  componentType: text('component_type', {
+    enum: ['osd', 'military_department', 'defense_agency', 'field_activity', 'combatant_command', 'sub_component', 'installation', 'activity', 'program_office'],
+  }).notNull(),
+  status: text('status', { enum: ['active', 'inactive', 'reorganizing'] }).notNull().default('active'),
+  dodComponentCode: text('dod_component_code'),
+  treasuryAgencyCode: text('treasury_agency_code'),
+  level: integer('level').notNull().default(0),
+  path: text('path').notNull().default('/'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const batchJobs = sqliteTable('batch_jobs', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  batchType: text('batch_type', {
+    enum: ['obligation_import', 'disbursement_import', 'journal_entry_import', 'payroll_processing', 'year_end_close'],
+  }).notNull(),
+  status: text('status', {
+    enum: ['pending', 'validating', 'processing', 'completed', 'failed', 'cancelled'],
+  }).notNull().default('pending'),
+  totalRecords: integer('total_records').notNull().default(0),
+  processedRecords: integer('processed_records').notNull().default(0),
+  successfulRecords: integer('successful_records').notNull().default(0),
+  failedRecords: integer('failed_records').notNull().default(0),
+  dryRun: integer('dry_run', { mode: 'boolean' }).notNull().default(false),
+  fiscalYear: integer('fiscal_year').notNull(),
+  summaryJson: text('summary_json'),
+  startedBy: text('started_by').notNull(),
+  startedAt: text('started_at').notNull(),
+  completedAt: text('completed_at'),
+});
+
+export const batchErrors = sqliteTable('batch_errors', {
+  id: text('id').primaryKey(),
+  batchId: text('batch_id').notNull().references(() => batchJobs.id),
+  rowNumber: integer('row_number').notNull(),
+  field: text('field'),
+  errorCode: text('error_code').notNull(),
+  message: text('message').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const dodLeases = sqliteTable('dod_leases', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  leaseType: text('lease_type', {
+    enum: ['operating', 'capital', 'intragovernmental'],
+  }).notNull(),
+  assetDescription: text('asset_description').notNull(),
+  lesseeEntity: text('lessee_entity').notNull(),
+  annualPayment: real('annual_payment').notNull(),
+  leaseTermMonths: integer('lease_term_months').notNull(),
+  commencementDate: text('commencement_date').notNull(),
+  status: text('status', { enum: ['active', 'expired', 'terminated'] }).notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const dodDebts = sqliteTable('dod_debts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  debtorName: text('debtor_name').notNull(),
+  amount: real('amount').notNull(),
+  debtType: text('debt_type', {
+    enum: ['overpayment', 'erroneous_payment', 'duplicate_payment', 'contract_debt', 'travel_advance', 'other'],
+  }).notNull(),
+  status: text('status', {
+    enum: ['active', 'referred', 'collected', 'written_off', 'compromised'],
+  }).notNull().default('active'),
+  referralDate: text('referral_date'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const monitoringAlertConfigs = sqliteTable('monitoring_alert_configs', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  metricType: text('metric_type', {
+    enum: ['fund_execution', 'ada_exposure', 'obligation_aging', 'reconciliation_health', 'payment_integrity'],
+  }).notNull(),
+  thresholdValue: real('threshold_value').notNull(),
+  alertLevel: text('alert_level', { enum: ['warning', 'critical'] }).notNull().default('warning'),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull(),
+});
+
+export const monitoringAlerts = sqliteTable('monitoring_alerts', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  metricType: text('metric_type').notNull(),
+  alertLevel: text('alert_level').notNull(),
+  message: text('message').notNull(),
+  currentValue: real('current_value'),
+  thresholdValue: real('threshold_value'),
+  status: text('status', { enum: ['active', 'acknowledged', 'resolved'] }).notNull().default('active'),
+  acknowledgedBy: text('acknowledged_by'),
+  acknowledgedAt: text('acknowledged_at'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const correctiveActionPlans = sqliteTable('corrective_action_plans', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  findingId: text('finding_id'),
+  title: text('title').notNull(),
+  classification: text('classification', {
+    enum: ['material_weakness', 'significant_deficiency', 'noncompliance', 'control_deficiency'],
+  }).notNull(),
+  responsibleOfficial: text('responsible_official').notNull(),
+  targetCompletionDate: text('target_completion_date').notNull(),
+  status: text('status', {
+    enum: ['draft', 'active', 'on_track', 'at_risk', 'overdue', 'completed', 'validated'],
+  }).notNull().default('draft'),
+  description: text('description'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const capMilestones = sqliteTable('cap_milestones', {
+  id: text('id').primaryKey(),
+  capId: text('cap_id').notNull().references(() => correctiveActionPlans.id),
+  title: text('title').notNull(),
+  targetDate: text('target_date').notNull(),
+  completedDate: text('completed_date'),
+  evidenceDescription: text('evidence_description'),
+  status: text('status', { enum: ['pending', 'in_progress', 'completed', 'overdue'] }).notNull().default('pending'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const workflowDefinitions = sqliteTable('workflow_definitions', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  entityType: text('entity_type').notNull(),
+  stepsJson: text('steps_json').notNull(),
+  escalationRulesJson: text('escalation_rules_json'),
+  slaHours: integer('sla_hours').notNull().default(48),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const workflowInstances = sqliteTable('workflow_instances', {
+  id: text('id').primaryKey(),
+  definitionId: text('definition_id').notNull(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  currentStepIndex: integer('current_step_index').notNull().default(0),
+  status: text('status', {
+    enum: ['pending', 'in_progress', 'approved', 'rejected', 'escalated', 'cancelled'],
+  }).notNull().default('pending'),
+  initiatedBy: text('initiated_by').notNull(),
+  startedAt: text('started_at').notNull(),
+  completedAt: text('completed_at'),
+});
+
+export const workflowStepInstances = sqliteTable('workflow_step_instances', {
+  id: text('id').primaryKey(),
+  instanceId: text('instance_id').notNull().references(() => workflowInstances.id),
+  stepIndex: integer('step_index').notNull(),
+  requiredRole: text('required_role').notNull(),
+  description: text('description'),
+  assignedTo: text('assigned_to'),
+  status: text('status', {
+    enum: ['pending', 'approved', 'rejected', 'escalated', 'skipped'],
+  }).notNull().default('pending'),
+  decision: text('decision', { enum: ['approve', 'reject'] }),
+  comment: text('comment'),
+  decidedAt: text('decided_at'),
+  dueDate: text('due_date'),
+});
+
+export const securityCooperationCases = sqliteTable('security_cooperation_cases', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  caseIdentifier: text('case_identifier').notNull(),
+  caseType: text('case_type', {
+    enum: ['direct_commercial_sale', 'fms_case', 'building_partner_capacity'],
+  }).notNull(),
+  country: text('country').notNull(),
+  totalValue: real('total_value').notNull(),
+  deliveredValue: real('delivered_value').notNull().default(0),
+  status: text('status', {
+    enum: ['active', 'closed', 'suspended'],
+  }).notNull().default('active'),
+  fiscalYear: integer('fiscal_year').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const threeWayMatches = sqliteTable('three_way_matches', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  poId: text('po_id').notNull(),
+  receiptId: text('receipt_id'),
+  invoiceId: text('invoice_id'),
+  status: text('status', {
+    enum: ['pending', 'matched', 'partial_match', 'mismatch', 'exception'],
+  }).notNull().default('pending'),
+  matchType: text('match_type', { enum: ['full', 'partial', 'no_match'] }),
+  discrepanciesJson: text('discrepancies_json'),
+  matchedAt: text('matched_at'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const suspenseItems = sqliteTable('suspense_items', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  accountNumber: text('account_number').notNull(),
+  accountTitle: text('account_title').notNull(),
+  amount: real('amount').notNull(),
+  originalPostingDate: text('original_posting_date').notNull(),
+  agingDays: integer('aging_days').notNull().default(0),
+  source: text('source'),
+  description: text('description'),
+  status: text('status', { enum: ['open', 'cleared', 'escalated', 'written_off'] }).notNull().default('open'),
+  assignedTo: text('assigned_to'),
+  lastReviewDate: text('last_review_date'),
+  clearingAction: text('clearing_action', { enum: ['cleared', 'written_off', 'transferred'] }),
+  clearingComment: text('clearing_comment'),
+  clearedAt: text('cleared_at'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const evidencePackages = sqliteTable('evidence_packages', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => engagements.id),
+  fiscalYear: integer('fiscal_year').notNull(),
+  status: text('status', { enum: ['generating', 'completed', 'failed', 'expired'] }).notNull().default('generating'),
+  classification: text('classification').notNull().default('unclassified'),
+  totalSections: integer('total_sections').notNull().default(0),
+  totalItems: integer('total_items').notNull().default(0),
+  packageJson: text('package_json'),
+  generatedBy: text('generated_by').notNull(),
+  generatedAt: text('generated_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+});
+
+export const legislationIngestionHistory = sqliteTable('legislation_ingestion_history', {
+  id: text('id').primaryKey(),
+  sourceName: text('source_name').notNull(),
+  sourceType: text('source_type').notNull(),
+  checkedAt: text('checked_at').notNull(),
+  changesDetected: integer('changes_detected', { mode: 'boolean' }).notNull().default(false),
+  newParametersJson: text('new_parameters_json'),
+  validationErrorsJson: text('validation_errors_json'),
+  appliedBy: text('applied_by'),
+  appliedAt: text('applied_at'),
 });
