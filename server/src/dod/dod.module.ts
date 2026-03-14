@@ -37,6 +37,26 @@ import { FinancialStatementsController } from './financial-statements/financial-
 import { FinancialStatementsService } from './financial-statements/financial-statements.service';
 import { IGTReconciliationController } from './igt-reconciliation/igt-reconciliation.controller';
 import { IGTReconciliationService } from './igt-reconciliation/igt-reconciliation.service';
+import { MonitoringController } from './monitoring/monitoring.controller';
+import { MonitoringService } from './monitoring/monitoring.service';
+import { RemediationController } from './remediation/remediation.controller';
+import { RemediationService } from './remediation/remediation.service';
+import { WorkflowsController } from './workflows/workflows.controller';
+import { WorkflowsService } from './workflows/workflows.service';
+import { BatchController } from './batch/batch.controller';
+import { BatchService } from './batch/batch.service';
+
+// Enterprise extension modules
+import { ReimbursableController } from './reimbursable/reimbursable.controller';
+import { ReimbursableService } from './reimbursable/reimbursable.service';
+import { SpecialAccountsController } from './special-accounts/special-accounts.controller';
+import { SpecialAccountsService } from './special-accounts/special-accounts.service';
+import { OrganizationsController } from './organizations/organizations.controller';
+import { OrganizationsService } from './organizations/organizations.service';
+import { EvidenceController } from './evidence/evidence.controller';
+import { EvidenceService } from './evidence/evidence.service';
+import { ReconciliationController } from './reconciliation/reconciliation.controller';
+import { ReconciliationService } from './reconciliation/reconciliation.service';
 
 @Module({
   controllers: [
@@ -59,6 +79,15 @@ import { IGTReconciliationService } from './igt-reconciliation/igt-reconciliatio
     PayTablesController,
     FinancialStatementsController,
     IGTReconciliationController,
+    MonitoringController,
+    RemediationController,
+    WorkflowsController,
+    BatchController,
+    ReimbursableController,
+    SpecialAccountsController,
+    OrganizationsController,
+    EvidenceController,
+    ReconciliationController,
   ],
   providers: [
     AppropriationsService,
@@ -80,6 +109,15 @@ import { IGTReconciliationService } from './igt-reconciliation/igt-reconciliatio
     PayTablesService,
     FinancialStatementsService,
     IGTReconciliationService,
+    MonitoringService,
+    RemediationService,
+    WorkflowsService,
+    BatchService,
+    ReimbursableService,
+    SpecialAccountsService,
+    OrganizationsService,
+    EvidenceService,
+    ReconciliationService,
   ],
   exports: [
     AppropriationsService,
@@ -90,6 +128,10 @@ import { IGTReconciliationService } from './igt-reconciliation/igt-reconciliatio
     DebtManagementService,
     LeasesService,
     IGTReconciliationService,
+    WorkflowsService,
+    ReimbursableService,
+    SpecialAccountsService,
+    OrganizationsService,
   ],
 })
 export class DodModule {}

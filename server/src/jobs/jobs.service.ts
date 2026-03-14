@@ -9,7 +9,8 @@ export type JobType =
   | 'generate-federal-reports'
   | 'ada-monitoring-sweep'
   | 'obligation-aging-review'
-  | 'payment-integrity-scan';
+  | 'payment-integrity-scan'
+  | 'legislation-ingestion-scan';
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
