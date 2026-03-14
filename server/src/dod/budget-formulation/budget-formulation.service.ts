@@ -10,7 +10,7 @@ export class BudgetFormulationService {
 
   async findByEngagement(engagementId: string, fiscalYear?: number) {
     const { budgetFormulations } = await import('@shared/lib/db/pg-schema');
-    let query = this.db
+    const query = this.db
       .select()
       .from(budgetFormulations)
       .where(eq(budgetFormulations.engagementId, engagementId));
