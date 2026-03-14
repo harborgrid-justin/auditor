@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { eq, and } from 'drizzle-orm';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 import { StartBatchDto, CancelBatchDto, BatchType } from './batch.dto';
 import {
   BatchProcessor,
@@ -27,7 +27,7 @@ export class BatchService {
    */
   private readonly batches = new Map<string, BatchResult & { engagementId: string; batchType: BatchType; cancelReason?: string }>();
 
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   // ---------------------------------------------------------------------------
   // Public API

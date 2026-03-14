@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { DebtManagementService } from './debt-management.service';
 import {
   CreateDebtRecordDto,
@@ -27,8 +28,8 @@ export class DebtManagementController {
   @Get()
   @ApiOperation({ summary: 'List debt records for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const debts = await this.debtManagementService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const debts = await this.debtManagementService.findByEngagement(engagementId, pagination);
     return { debts };
   }
 

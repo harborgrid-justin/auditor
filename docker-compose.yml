@@ -9,12 +9,22 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-in-production}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_API_URL=http://api:4000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '1.0'
+        reservations:
+          memory: 256m
+    networks:
+      - frontend
 
   # NestJS Backend API
   api:
@@ -26,19 +36,40 @@ services:
     environment:
       - PORT=4000
       - NODE_ENV=production
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-in-production}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       - FRONTEND_URL=http://localhost:3000
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=auditpro
       - DB_USER=auditpro
-      - DB_PASSWORD=${DB_PASSWORD:-auditpro-secure-password}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
       - DB_POOL_SIZE=20
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - LOG_LEVEL=info
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_ENDPOINT:-}
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:4000/api/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: '2.0'
+        reservations:
+          memory: 512m
+    networks:
+      - frontend
+      - backend
 
   # PostgreSQL Database
   postgres:
@@ -48,7 +79,7 @@ services:
     environment:
       - POSTGRES_DB=auditpro
       - POSTGRES_USER=auditpro
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-auditpro-secure-password}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -57,12 +88,20 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: '2.0'
+        reservations:
+          memory: 256m
+    networks:
+      - backend
 
   # Redis (for BullMQ job queue)
   redis:
     image: redis:7-alpine
-    ports:
-      - '6379:6379'
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     healthcheck:
@@ -71,7 +110,22 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 64m
+    networks:
+      - backend
 
 volumes:
   postgres-data:
   redis-data:
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge

@@ -1,23 +1,28 @@
 import {
   Injectable,
-  CanActivate,
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 /**
- * JWT Authentication guard. Validates the Bearer token from the
- * Authorization header. Integrates with passport-jwt strategy.
+ * JWT Authentication guard backed by Passport's JWT strategy.
  *
- * Routes decorated with @Public() bypass authentication.
+ * All routes are protected by default. Routes decorated with @Public()
+ * bypass authentication.
+ *
+ * Registered globally as APP_GUARD in AppModule so every controller
+ * is automatically protected without needing @UseGuards().
  */
 @Injectable()
-export class AuthGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+export class AuthGuard extends PassportAuthGuard('jwt') {
+  constructor(private reflector: Reflector) {
+    super();
+  }
 
-  canActivate(context: ExecutionContext): boolean {
+  canActivate(context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -27,15 +32,15 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
+    return super.canActivate(context);
+  }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid authorization header');
+  handleRequest<T>(err: Error | null, user: T, info: Error | undefined): T {
+    if (err || !user) {
+      throw err || new UnauthorizedException(
+        info?.message || 'Invalid or expired authentication token',
+      );
     }
-
-    // Full JWT validation will be handled by passport-jwt strategy
-    // once the AuthModule is fully configured
-    return true;
+    return user;
   }
 }

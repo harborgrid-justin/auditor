@@ -1,11 +1,14 @@
-import { Module, Global, OnModuleInit, Logger } from '@nestjs/common';
+import { Module, Global, Inject, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { NodePgDatabase, drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '@shared/lib/db/pg-schema';
 
 export const DATABASE_TOKEN = 'DATABASE_CONNECTION';
 export const PG_POOL_TOKEN = 'PG_POOL';
+
+/** Typed Drizzle database instance with full schema awareness. */
+export type AppDatabase = NodePgDatabase<typeof schema>;
 
 @Global()
 @Module({
@@ -36,16 +39,23 @@ export const PG_POOL_TOKEN = 'PG_POOL';
   ],
   exports: [DATABASE_TOKEN, PG_POOL_TOKEN],
 })
-export class DatabaseModule implements OnModuleInit {
+export class DatabaseModule implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DatabaseModule.name);
 
   constructor(
     private readonly configService: ConfigService,
+    @Inject(PG_POOL_TOKEN) private readonly pool: Pool,
   ) {}
 
   async onModuleInit() {
     const host = this.configService.get('DB_HOST', 'localhost');
     const db = this.configService.get('DB_NAME', 'auditpro');
     this.logger.log(`PostgreSQL connection configured: ${host}/${db}`);
+  }
+
+  async onModuleDestroy() {
+    this.logger.log('Closing PostgreSQL connection pool...');
+    await this.pool.end();
+    this.logger.log('PostgreSQL connection pool closed');
   }
 }

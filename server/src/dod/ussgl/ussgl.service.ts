@@ -1,12 +1,13 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import { CreateUssglAccountDto, UpdateUssglAccountDto } from './ussgl.dto';
 
 @Injectable()
 export class UssglService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async findByEngagement(engagementId: string, fiscalYear?: number, trackType?: string) {
     const { ussglAccounts } = await import('@shared/lib/db/pg-schema');

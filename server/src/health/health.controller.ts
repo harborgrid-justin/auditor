@@ -1,10 +1,12 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Pool } from 'pg';
 import { PG_POOL_TOKEN } from '../database/database.module';
 import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('health')
+@SkipThrottle()
 @Controller('api/health')
 export class HealthController {
   private readonly startTime = Date.now();

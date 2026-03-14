@@ -1,10 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 
 @Injectable()
 export class DodReportsService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async generateSf133(engagementId: string, fiscalYear: number, period?: string) {
     const { appropriations, dodObligations, dodDisbursements } = await import('@shared/lib/db/pg-schema');

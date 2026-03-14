@@ -1,15 +1,20 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AuditTrailInterceptor } from './common/interceptors/audit-trail.interceptor';
 import { WinstonLogger } from './common/logger/winston.logger';
+import { shutdownTracing } from './common/telemetry/opentelemetry';
+import { shutdownMetrics } from './common/telemetry/metrics';
 
 async function bootstrap() {
   const logger = new WinstonLogger();
   const app = await NestFactory.create(AppModule, { logger });
+
+  // Enable graceful shutdown hooks (triggers OnModuleDestroy lifecycle)
+  app.enableShutdownHooks();
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -57,6 +62,22 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`AuditPro NestJS server running on port ${port}`, 'Bootstrap');
   logger.log(`Swagger docs available at http://localhost:${port}/api/docs`, 'Bootstrap');
+
+  // Graceful shutdown for telemetry
+  const shutdownLogger = new Logger('Shutdown');
+  const gracefulShutdown = async (signal: string) => {
+    shutdownLogger.log(`Received ${signal}, shutting down gracefully...`);
+    try {
+      await shutdownTracing();
+      shutdownMetrics();
+      shutdownLogger.log('Telemetry flushed successfully');
+    } catch (err) {
+      shutdownLogger.error('Error during telemetry shutdown', err);
+    }
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
 bootstrap();

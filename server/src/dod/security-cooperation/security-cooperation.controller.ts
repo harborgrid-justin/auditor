@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { SecurityCooperationService } from './security-cooperation.service';
 import { CreateFMSCaseDto, RecordTrustFundTransactionDto, AdvanceCasePhaseDto } from './security-cooperation.dto';
 
@@ -22,8 +23,8 @@ export class SecurityCooperationController {
   @Get()
   @ApiOperation({ summary: 'List FMS cases for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const cases = await this.securityCooperationService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const cases = await this.securityCooperationService.findByEngagement(engagementId, pagination);
     return { cases };
   }
 

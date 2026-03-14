@@ -19,7 +19,7 @@
  */
 
 import { Injectable, Inject } from '@nestjs/common';
-import { DATABASE_TOKEN } from '../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../database/database.module';
 import { NotificationsService, NotificationType, NotificationPriority } from './notifications.service';
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export class EscalationService {
   private escalationLog: EscalationRecord[] = [];
 
   constructor(
-    @Inject(DATABASE_TOKEN) private readonly db: any,
+    @Inject(DATABASE_TOKEN) private readonly db: AppDatabase,
     private readonly notificationsService: NotificationsService,
   ) {}
 

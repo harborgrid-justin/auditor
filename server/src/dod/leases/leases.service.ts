@@ -1,19 +1,34 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import { CreateLeaseDto } from './leases.dto';
 
 @Injectable()
 export class LeasesService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { leaseAmortizationSchedules } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(leaseAmortizationSchedules)
-      .where(eq(leaseAmortizationSchedules.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(leaseAmortizationSchedules)
+        .where(eq(leaseAmortizationSchedules.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(leaseAmortizationSchedules)
+        .where(eq(leaseAmortizationSchedules.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -133,11 +148,12 @@ export class LeasesService {
   }
 
   async getLeaseDisclosureSummary(engagementId: string) {
-    const leases = await this.findByEngagement(engagementId);
+    const leasesResult = await this.findByEngagement(engagementId, { page: 1, limit: 100 });
+    const leases = leasesResult.data;
 
     return {
       engagementId,
-      totalLeases: leases.length,
+      totalLeases: leasesResult.meta.total,
       byClassification: leases.reduce((acc: Record<string, number>, l: any) => {
         const cls = l.classificationType || 'unclassified';
         acc[cls] = (acc[cls] || 0) + 1;

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { DisbursementsService } from './disbursements.service';
 import { CreateDisbursementDto, UpdateDisbursementDto } from './disbursements.dto';
 
@@ -23,8 +24,8 @@ export class DisbursementsController {
   @Get()
   @ApiOperation({ summary: 'List disbursements for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const disbursements = await this.disbursementsService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const disbursements = await this.disbursementsService.findByEngagement(engagementId, pagination);
     return { disbursements };
   }
 

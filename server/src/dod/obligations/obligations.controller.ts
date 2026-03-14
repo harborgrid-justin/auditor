@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { ObligationsService } from './obligations.service';
 import { CreateObligationDto, UpdateObligationDto } from './obligations.dto';
 
@@ -23,8 +24,8 @@ export class ObligationsController {
   @Get()
   @ApiOperation({ summary: 'List obligations for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const obligations = await this.obligationsService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const obligations = await this.obligationsService.findByEngagement(engagementId, pagination);
     return { obligations };
   }
 
@@ -47,5 +48,13 @@ export class ObligationsController {
   @ApiOperation({ summary: 'Update an obligation record' })
   async update(@Param('id') id: string, @Body() dto: UpdateObligationDto) {
     return this.obligationsService.update(id, dto);
+  }
+
+  @Post('bulk')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles('admin', 'comptroller', 'fund_control_officer')
+  @ApiOperation({ summary: 'Bulk create obligations with ADA validation' })
+  async bulkCreate(@Body() dtos: CreateObligationDto[]) {
+    return this.obligationsService.bulkCreate(dtos);
   }
 }

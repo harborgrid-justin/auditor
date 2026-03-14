@@ -1,7 +1,8 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import {
   SubmitIGTTransactionDto,
   RunReconciliationDto,
@@ -11,7 +12,7 @@ import {
 
 @Injectable()
 export class IGTReconciliationService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async submitTransaction(dto: SubmitIGTTransactionDto) {
     const { igtReconciliations } = await import('@shared/lib/db/pg-schema');
@@ -47,16 +48,31 @@ export class IGTReconciliationService {
     return results[0];
   }
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { igtReconciliations } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(igtReconciliations)
-      .where(eq(igtReconciliations.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(igtReconciliations)
+        .where(eq(igtReconciliations.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(igtReconciliations)
+        .where(eq(igtReconciliations.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async runReconciliation(dto: RunReconciliationDto) {
-    const transactions = await this.findByEngagement(dto.engagementId);
+    const transactionsResult = await this.findByEngagement(dto.engagementId, { page: 1, limit: 100 });
+    const transactions = transactionsResult.data;
 
     const buyTransactions = transactions.filter(
       (t: any) => t.transactionType === 'buy' && t.period === dto.period,
@@ -133,7 +149,8 @@ export class IGTReconciliationService {
   }
 
   async getReconciliationReport(engagementId: string, period: string) {
-    const transactions = await this.findByEngagement(engagementId);
+    const transactionsResult = await this.findByEngagement(engagementId, { page: 1, limit: 100 });
+    const transactions = transactionsResult.data;
     const periodTxns = transactions.filter((t: any) => t.period === period);
 
     const totalBuys = periodTxns

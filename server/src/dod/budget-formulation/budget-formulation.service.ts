@@ -1,12 +1,12 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 import { CreateBudgetFormulationDto, SubmitUnfundedRequirementDto } from './budget-formulation.dto';
 
 @Injectable()
 export class BudgetFormulationService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
   async findByEngagement(engagementId: string, fiscalYear?: number) {
     const { budgetFormulations } = await import('@shared/lib/db/pg-schema');

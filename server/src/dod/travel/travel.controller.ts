@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { TravelService } from './travel.service';
 import { CreateTravelOrderDto, UpdateTravelOrderDto } from './travel.dto';
 
@@ -23,8 +24,8 @@ export class TravelController {
   @Get()
   @ApiOperation({ summary: 'List travel orders for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const orders = await this.travelService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const orders = await this.travelService.findByEngagement(engagementId, pagination);
     return { orders };
   }
 

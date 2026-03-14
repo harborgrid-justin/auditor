@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { MilitaryPayService } from './military-pay.service';
 import { CreateMilitaryPayDto, UpdateMilitaryPayDto } from './military-pay.dto';
 
@@ -23,8 +24,8 @@ export class MilitaryPayController {
   @Get()
   @ApiOperation({ summary: 'List military pay records for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const records = await this.militaryPayService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const records = await this.militaryPayService.findByEngagement(engagementId, pagination);
     return { records };
   }
 

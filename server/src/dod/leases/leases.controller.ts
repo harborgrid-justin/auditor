@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { LeasesService } from './leases.service';
 import { CreateLeaseDto, ClassifyLeaseDto, GenerateAmortizationDto } from './leases.dto';
 
@@ -22,8 +23,8 @@ export class LeasesController {
   @Get()
   @ApiOperation({ summary: 'List leases for an engagement' })
   @ApiQuery({ name: 'engagementId', required: true })
-  async findAll(@Query('engagementId') engagementId: string) {
-    const leases = await this.leasesService.findByEngagement(engagementId);
+  async findAll(@Query('engagementId') engagementId: string, @Query() pagination: PaginationQueryDto) {
+    const leases = await this.leasesService.findByEngagement(engagementId, pagination);
     return { leases };
   }
 

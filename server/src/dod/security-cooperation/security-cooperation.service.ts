@@ -1,19 +1,34 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 import { CreateFMSCaseDto, RecordTrustFundTransactionDto, AdvanceCasePhaseDto } from './security-cooperation.dto';
 
 @Injectable()
 export class SecurityCooperationService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { fmsCases } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(fmsCases)
-      .where(eq(fmsCases.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(fmsCases)
+        .where(eq(fmsCases.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(fmsCases)
+        .where(eq(fmsCases.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -94,7 +109,8 @@ export class SecurityCooperationService {
   }
 
   async getCaseStatusReport(engagementId: string) {
-    const cases = await this.findByEngagement(engagementId);
+    const casesResult = await this.findByEngagement(engagementId, { page: 1, limit: 100 });
+    const cases = casesResult.data;
     const byPhase: Record<string, number> = {};
     let totalValue = 0;
 
@@ -105,7 +121,7 @@ export class SecurityCooperationService {
 
     return {
       engagementId,
-      totalCases: cases.length,
+      totalCases: casesResult.meta.total,
       totalValue,
       byPhase,
       generatedAt: new Date().toISOString(),

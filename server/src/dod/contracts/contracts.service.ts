@@ -1,19 +1,34 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { DATABASE_TOKEN } from '../../database/database.module';
+import { DATABASE_TOKEN, AppDatabase } from '../../database/database.module';
 import { CreateContractDto, UpdateContractDto } from './contracts.dto';
+import { PaginationQueryDto, buildPaginatedResponse } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class ContractsService {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: any) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: AppDatabase) {}
 
-  async findByEngagement(engagementId: string) {
+  async findByEngagement(engagementId: string, pagination?: PaginationQueryDto) {
     const { dodContracts } = await import('@shared/lib/db/pg-schema');
-    return this.db
-      .select()
-      .from(dodContracts)
-      .where(eq(dodContracts.engagementId, engagementId));
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(dodContracts)
+        .where(eq(dodContracts.engagementId, engagementId))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(dodContracts)
+        .where(eq(dodContracts.engagementId, engagementId)),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    return buildPaginatedResponse(items, total, page, limit);
   }
 
   async findOne(id: string) {
@@ -76,5 +91,14 @@ export class ContractsService {
     }
 
     return this.findOne(id);
+  }
+
+  async bulkCreate(dtos: CreateContractDto[]) {
+    const results = [];
+    for (const dto of dtos) {
+      const result = await this.create(dto);
+      results.push(result);
+    }
+    return { created: results.length, contracts: results };
   }
 }
